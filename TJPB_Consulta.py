@@ -15,7 +15,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 planilha_dados = pd.read_excel("Excel/Consulta_TJPB.xlsx", sheet_name="Plan1")
@@ -43,7 +42,7 @@ navegador = webdriver.Chrome(options=chrome_options)
 
 navegador.maximize_window()
 
-termos_de_pesquisa = ["Execução de titulo extrajudicial", "Procedimento Comum", "Monitória"]
+termos_de_pesquisa = ["Execução Fiscal"]
 
 navegador.get("https://pje.tjpb.jus.br/pje/login.seam?loginComCertificado=false")
 
@@ -74,86 +73,16 @@ _  _ _ ____ _ ____ _  _    ___ ____ ____ _  _ _  _ ____ _    ____ ____ _   _
 print(logo)
 
 bancos_para_verificar = [
-    "BANCO INVESTCRED UNIBANCO S.A.",
-    "BANCO ITAUCARD S.A.",
-    "BANCO ITAÚ BBA S.A.",
-    "BANCO ITAÚ CONSIGNADO S.A.",
-    "BANCO ITAÚ VEÍCULOS S.A.",
-    "FINANCEIRA ITAÚ CBD S.A. CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
-    "HIPERCARD BANCO MÚLTIPLO S.A.",
-    "ITAÚ UNIBANCO S.A.",
-    "LUIZACRED S.A. SOCIEDADE DE CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
-    "REDECARD INSTITUIÇÃO DE PAGAMENTO S.A.",
-    "NEON FINANCEIRA - CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
-    "NEON PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
-    "BANCO BV S.A.",
-    "MERCADO CRÉDITO SOCIEDADE DE CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
-    "MERCADO PAGO INSTITUIÇÃO DE PAGAMENTO LTDA.",
-    "NU FINANCEIRA S.A. - SOCIEDADE DE CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
-    "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
-    "BANCO ORIGINAL S.A.",
-    "PICPAY BANK - BANCO MÚLTIPLO S.A",
-    "AME DIGITAL BRASIL INSTITUICAO DE PAGAMENTO LTDA",
-    "PARATI - CREDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
-    "BANCO BTG PACTUAL S.A.",
-    "BANCO PAN S.A.",
-    "PAN FINANCEIRA S.A. - CRÉDITO, FINANCIAMENTO E INVESTIMENTOS",
-    "BANCO BRADESCARD S.A.",
-    "BANCO BRADESCO BBI S.A.",
-    "BANCO BRADESCO BERJ S.A.",
-    "BANCO BRADESCO FINANCIAMENTOS S.A.",
-    "BANCO BRADESCO S.A.",
-    "BANCO DIGIO S.A.",
-    "BANCO LOSANGO S.A. - BANCO MÚLTIPLO",
-    "BITZ INSTITUICAO DE PAGAMENTO S.A.",
-    "KIRTON BANK S.A. - BANCO MÚLTIPLO",
-    "BANCO INTER S.A.",
-    "BANCO C6 CONSIGNADO S.A.",
-    "BANCO C6 S.A.",
-    "BANCOSEGURO S.A.",
-    "PAGSEGURO INTERNET INSTITUIÇÃO DE PAGAMENTO S.A.",
-    "WIRECARD BRAZIL INSTITUIÇÃO DE PAGAMENTO S.A.",
-    "BANCO ITAUBANK S.A.",
-    "ITAÚ UNIBANCO HOLDING S.A.",
-    "AYMORÉ CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
-    "BANCO HYUNDAI CAPITAL BRASIL S.A.",
-    "BANCO PSA FINANCE BRASIL S.A.",
-    "BANCO RCI BRASIL S.A.",
-    "BANCO SANTANDER (BRASIL) S.A.",
-    "BEN BENEFÍCIOS E SERVIÇOS INSTITUIÇÃO DE PAGAMENTO S.A.",
-    "GETNET ADQUIRÊNCIA E SERVIÇOS PARA MEIOS DE PAGAMENTO S.A. INSTITUIÇÃO DE PAGAMENTO",
-    "SUPERDIGITAL INSTITUIÇÃO DE PAGAMENTO S.A.",
-    "BANCO INBURSA S.A.",
-    "BANCO MASTER DE INVESTIMENTO S.A.",
-    "BANCO DIGIMAIS S.A.",
-    "AGIBANK FINANCEIRA S.A. - CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
-    "BANCO AGIBANK S.A.",
-    "BANCO DAYCOVAL S.A.",
-    "DAYCOVAL LEASING - BANCO MÚLTIPLO S.A.",
-    "ADIQ INSTITUIÇÃO DE PAGAMENTO S.A.",
-    "BANCO BS2 S.A.",
-    "BANCO XP S.A",
-    "BANCO BMG S.A.",
-    "BANCO CIFRA S.A.",
-    "BCV - BANCO DE CRÉDITO E VAREJO S.A.",
-    "BANCO SOFISA S.A.",
-    "SOFISA S.A. CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
-    "BANCO MERCANTIL DO BRASIL S.A.",
-    "BANCO J. SAFRA S.A.",
-    "BANCO SAFRA S.A.",
-    "BANCO CREFISA S.A.",
-    "BANCO",
-    "AYMORÉ",
-    "AGIBANK",
-    "INSTITUIÇÃO",
-    "CRÉDITO",
-    "CREDITO",
-    "COOPERATIVA",
-    "COPERATIVA",
-    "SEGUROS"
-
+    "UNIAO FEDERAL - FAZENDA NACIONAL",
+    "CONSELHO REGIONAL DE EDUCACAO FISICA DA 4 REGIAO",
+    "INSTITUTO BRASILEIRO DO MEIO AMBIENTE E DOS RECURSOS NATURAIS RENOVAVEIS - IBAMA",
+    "UNIAO",
+    "CONSELHO",
+    "FEDERAL",
+    "FAZENDA",
+    "MUNICIPIO",
+    "ESTADO"
 ]
-
 WebDriverWait(navegador, 300).until(
     EC.presence_of_element_located((By.XPATH, "//*[@id='barraSuperiorPrincipal']/div/div[1]/ul/li/a")))
 
@@ -354,7 +283,7 @@ if not verificado:
                         planilha_dados.loc[prox_linha, "Banco"] = polo_ativo
                         planilha_dados.loc[prox_linha, "Cliente"] = povo_passivo
                         planilha_dados.loc[prox_linha, "Status"] = "Aguardando envio"
-                        planilha_dados.loc[prox_linha, "Tribunal"] = "PB"
+                        planilha_dados.loc[prox_linha, "Tribunal"] = "TJPB"
 
                         time.sleep(0.5)
 
@@ -514,6 +443,13 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
 
             except:
                 planilha_dados.loc[indice_linha2, "CPF/CNPJ"] = "CPF não encontrado"
+
+
+            try:
+                tem_advogado = navegador.find_element(By.XPATH, "//*[@id='poloPassivo']/table/tbody/tr/td/ul/li/small/span/span")
+                planilha_dados.loc[indice_linha2, "Advogado"] = "Já tem advogado"
+            except:
+                planilha_dados.loc[indice_linha2, "Advogado"] = "Não tem advogado"
 
             para_planilha()
 

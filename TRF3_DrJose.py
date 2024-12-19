@@ -15,7 +15,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 planilha_dados = pd.read_excel("Excel/TRF3.xlsx", sheet_name="Plan1")
 
@@ -68,7 +67,9 @@ bancos_para_verificar = [
     "UNIAO",
     "CONSELHO",
     "FEDERAL",
-    "FAZENDA"
+    "FAZENDA",
+    "MUNICIPIO",
+    "ESTADO"
 ]
 
 WebDriverWait(navegador, 300).until(
