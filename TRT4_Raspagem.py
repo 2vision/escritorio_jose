@@ -16,6 +16,7 @@ LOGIN = '00166687073'
 SENHA = '@Dkz299302'
 CAPTCHA_API_KEY = 'a89345c962e2eba448e571a6d0143363'
 ARQUIVO = 'Dados_TRF4'
+LISTA_PARCEIROS = []
 
 
 def executar():
@@ -65,8 +66,7 @@ def executar_processo(processo, bearer_token):
 
     # Request para pegar as informações do processo
     informacoes_processo = request_processo_captcha(processo_id, token_desafio, resposta, bearer_token)
-
-    informacoes = padronizar_informacoes(processo, informacoes_processo)
+    informacoes = padronizar_informacoes(informacoes_processo)
 
     with lock:
         salvar_informacoes_no_json(informacoes)
@@ -238,32 +238,32 @@ def request_processo_captcha(processo_id, token, resposta, bearer_token):
         )
 
 
-def padronizar_informacoes(processo, informacoes_processo):
+def padronizar_informacoes(informacoes_processo):
     informacoes = []
     if informacoes_processo.get('poloPassivo'):
         for reclamado in informacoes_processo.get('poloPassivo'):
+            nome_reclamado = reclamado.get('nome').strip()
             data = datetime.fromisoformat(informacoes_processo.get('distribuidoEm')).strftime('%d/%m/%Y')
             valor = f"{informacoes_processo.get('valorDaCausa')}".replace('.', ',')
 
-            informacoes.append({
-                'Reclamado': reclamado.get('nome').strip(),
-                'Número do Processo': informacoes_processo.get('numero'),
-                'Reclamante': informacoes_processo.get('poloAtivo')[0].get('nome').strip(),
-                'Orgão Julgador': informacoes_processo.get('orgaoJulgador').strip(),
-                'Data de Distribuição': data,
-                'Valor da Causa': valor,
-                'Assuntos': ', '.join(
-                    [assunto.get('descricao').strip() for assunto in informacoes_processo.get('assuntos')]),
-                'CPF/CNPJ': reclamado.get('documento'),
-            })
+            nao_e_parceiro = not any(item.lower() in nome_reclamado.lower() for item in LISTA_PARCEIROS)
+
+            if not LISTA_PARCEIROS or nao_e_parceiro:
+                informacoes.append({
+                    'Reclamado': nome_reclamado,
+                    'Número do Processo': informacoes_processo.get('numero'),
+                    'Reclamante': informacoes_processo.get('poloAtivo')[0].get('nome').strip(),
+                    'Orgão Julgador': informacoes_processo.get('orgaoJulgador').strip(),
+                    'Data de Distribuição': data,
+                    'Valor da Causa': valor,
+                    'Assuntos': ', '.join(
+                        [assunto.get('descricao').strip() for assunto in informacoes_processo.get('assuntos')]),
+                    'CPF/CNPJ': reclamado.get('documento'),
+                })
 
     else:
         mensagemErro = informacoes_processo.get('mensagemErro')
         if mensagemErro:
-            informacoes.append({
-                'Número do Processo': processo,
-                'CPF/CNPJ': mensagemErro
-            })
             print(f'Não foi possível obter as informações do processo: {mensagemErro}')
 
         else:
