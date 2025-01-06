@@ -1,269 +1,306 @@
-import base64
-import time
+import os
+import threading
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
-import subprocess
-import requests
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.common import StaleElementReferenceException
-from selenium.webdriver import ActionChains
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from anticaptchaofficial.imagecaptcha import *
+from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from seleniumwire import webdriver
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
-
-API_KEY = "a89345c962e2eba448e571a6d0143363"
-
-
-planilha_dados = pd.read_excel("TRT.xlsx", sheet_name="Plan1")
-
-def para_planilha():
-    # Criar um objeto writer especificando o arquivo Excel
-    writer = pd.ExcelWriter("TRT.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace')
-
-    # Atualizar os dados na aba "Ativos"
-    planilha_dados.to_excel(writer, "Plan1", index=False)
-
-    # Salvar as alterações
-    writer.close()
+LOGIN = '00166687073'
+SENHA = '@Dkz299302'
+CAPTCHA_API_KEY = 'a89345c962e2eba448e571a6d0143363'
+ARQUIVO = 'Dados_TRF4'
 
 
-edge_options = webdriver.EdgeOptions()
-edge_options.set_capability("ms:edgeChromium", True)
-edge_options.add_experimental_option("useAutomationExtension", False)
-edge_options.add_argument("--disable-blink-features=AutomationControlled")
-edge_options.add_argument("--disable-sync")
-edge_options.add_argument("--disable-features=msEdgeEnableNurturingFramework")
-edge_options.add_argument("--disable-popup-blocking")
-edge_options.add_argument("--disable-infobars")
-edge_options.add_argument("--disable-extensions")
-edge_options.add_argument("--remote-allow-origins=*")
-edge_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+def executar():
+    processos_pendentes = pegar_processos()
+    print('Iniciando captura de token para autenticação...')
+    bearer_token = pegar_bearer_token(processos_pendentes[0])
+    print('Token capturado.')
+    print('Iniciando captura das informações dos processos...')
 
-def obter_caminho_chromedriver():
-    # Chame o gerenciador.py para obter o caminho do ChromeDriver
-    result = subprocess.run(["python", "gerenciador.py"], capture_output=True, text=True)
-    chromedriver_path = result.stdout.strip()
-    return chromedriver_path
+    while processos_pendentes:
+        falhas = []
+
+        def executar_todos_processos(processo):
+            try:
+                executar_processo(processo, bearer_token)
+            except:
+                falhas.append(processo)
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            executor.map(executar_todos_processos, processos_pendentes)
+
+        processos_pendentes = falhas
+
+    salvar_informacoes_no_excel()
+    print('Todos os processos foram finalizados.')
 
 
-def resolver_captcha(captcha_base64):
-    captcha_bytes = base64.b64decode(captcha_base64)
+def executar_processo(processo, bearer_token):
+    print(f'Processando o processo número {processo}...')
+    # Request para pegar o ID do processo
+    response_processo = request_processo(processo)
+    processo_id = response_processo[0].get('id')
 
-    # Enviar o captcha para o serviço
-    response = requests.post(
-        'https://api.anti-captcha.com/createTask',
-        json={
-            "clientKey": API_KEY,
-            "task": {
-                "type": "ImageToTextTask",
-                "body": captcha_base64,
-                "phrase": False,
-                "case": False,
-                "numeric": False,
-                "math": 0,
-                "minLength": 0,
-                "maxLength": 0
-            }
+    # Request para pegar o TokenDesafio e a Imagem do Captcha
+    response_processo_id = request_processo_id(processo_id)
+
+    imagem = response_processo_id.get('imagem')
+    token_desafio = response_processo_id.get('tokenDesafio')
+
+    # Request para pegar a TaskID do Captcha
+    response_captcha_id = request_captcha_imagem(imagem)
+
+    # Request para pegar a resposta do Captcha
+    response_captcha_text = request_captcha_id(response_captcha_id.get('taskId'))
+
+    resposta = response_captcha_text.get('solution').get('text')
+
+    # Request para pegar as informações do processo
+    informacoes_processo = request_processo_captcha(processo_id, token_desafio, resposta, bearer_token)
+
+    informacoes = padronizar_informacoes(processo, informacoes_processo)
+
+    with lock:
+        salvar_informacoes_no_json(informacoes)
+    print(f'Informações do processo {processo} salvas com sucesso!')
+
+
+def pegar_processos():
+    planilha_dados = pd.read_excel('TRT.xlsx', sheet_name='Plan1')
+    return list(planilha_dados.iloc[:, 1])
+
+
+def pegar_bearer_token(processo):
+    bearer_token = None
+    warnings.simplefilter(action='ignore', category=FutureWarning)
+
+    edge_options = webdriver.EdgeOptions()
+    edge_options.set_capability('ms:edgeChromium', True)
+    edge_options.add_experimental_option('useAutomationExtension', False)
+    edge_options.add_argument('--disable-blink-features=AutomationControlled')
+    edge_options.add_argument('--disable-sync')
+    edge_options.add_argument('--disable-features=msEdgeEnableNurturingFramework')
+    edge_options.add_argument('--disable-popup-blocking')
+    edge_options.add_argument('--disable-infobars')
+    edge_options.add_argument('--disable-extensions')
+    edge_options.add_argument('--remote-allow-origins=*')
+    edge_options.add_argument('--disable-http2')
+    edge_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+    prefs = {
+        'user_experience_metrics': {
+            'personalization_data_consent_enabled': True
         }
-    )
-
-    task_id = response.json().get('taskId')
-    if not task_id:
-        raise Exception("Falha ao criar a tarefa de captcha")
-
-    # Aguardar a solução do captcha
-    while True:
-        time.sleep(5)  # Aguardar 5 segundos entre as consultas
-        result = requests.post(
-            'https://api.anti-captcha.com/getTaskResult',
-            json={"clientKey": API_KEY, "taskId": task_id}
-        ).json()
-
-        if result.get('status') == 'ready':
-            return result['solution']['text']
-
-prefs = {
-    'user_experience_metrics': {
-        'personalization_data_consent_enabled': True
     }
-}
 
-edge_options.add_experimental_option('prefs', prefs)
+    edge_options.add_experimental_option('prefs', prefs)
 
-# Crie uma instância do Microsoft EdgeDriver com o serviço, opções e caminho do driver configurados
-navegador = webdriver.Edge(options=edge_options)
+    service = Service(EdgeChromiumDriverManager().install())
+    navegador = webdriver.Edge(service=service, options=edge_options)
+    wait = WebDriverWait(navegador, 10)
 
-navegador.maximize_window()
+    navegador.maximize_window()
 
-navegador.get("https://pje.trt4.jus.br/primeirograu/login.seam")
+    navegador.get('https://pje.trt4.jus.br/primeirograu/login.seam')
 
+    wait.until(EC.presence_of_element_located((By.ID, 'username'))).send_keys(LOGIN)
+    navegador.find_element(By.ID, 'password').send_keys(SENHA)
+    navegador.find_element(By.ID, 'btnEntrar').click()
 
-input("Pressione Enter após realizar o login...")
+    navegador.get('https://pje.trt4.jus.br/consultaprocessual/')
 
-tres_pontinhos = navegador.find_element(By.XPATH, '//*[@id="botao-menu"]')
-navegador.execute_script("arguments[0].click();", tres_pontinhos)
+    wait.until(EC.visibility_of_element_located((By.ID, 'nrProcessoInput'))).send_keys(processo)
+    navegador.find_element(By.ID, 'btnPesquisar').click()
 
-time.sleep(1)
-consultar = navegador.find_element(By.XPATH, '//*[@id="menu-item-1"]/pje-menu-sobreposto/div[2]/pje-item-menu-sobreposto/div[3]/div/div/div[2]')
-navegador.execute_script("arguments[0].click();", consultar)
-time.sleep(1)
-consultar_processos_de_terceiros = navegador.find_element(By.XPATH, '//*[@id="menu-item-1"]/pje-menu-sobreposto/div[2]/pje-item-menu-sobreposto/div[3]/div/a/div[2]')
-navegador.execute_script("arguments[0].click();", consultar_processos_de_terceiros)
+    imagemCaptcha = wait.until(EC.visibility_of_element_located((By.ID, 'imagemCaptcha')))
+    imagem = imagemCaptcha.get_attribute('src').split(',')[-1]
 
+    response_captcha_id = request_captcha_imagem(imagem)
+    response_captcha_text = request_captcha_id(response_captcha_id.get('taskId'))
+    navegador.find_element(By.ID, 'captchaInput').send_keys(response_captcha_text.get('solution').get('text'))
+    navegador.find_element(By.ID, 'btnEnviar').click()
 
-navegador.switch_to.window(navegador.window_handles[-1])
+    for request in navegador.requests:
+        if 'api/processos/' in request.url and 'dadosbasicos' not in request.url:
+            bearer_token = request.headers.get('authorization')
 
-WebDriverWait(navegador, 20).until(
-    EC.presence_of_element_located((By.XPATH, '//*[@id="nrProcessoInput"]')))
+    navegador.quit()
 
-processos_nao_verificados = planilha_dados['CPF/CNPJ'].isnull().sum()
+    if bearer_token:
+        return bearer_token
 
-processos_verificados = 1
-
-for indice_linha, linha in planilha_dados.iterrows():
-
-    try:
-        if pd.isna(linha["CPF/CNPJ"]):
-
-            print(f"Processando verificados: {processos_verificados}/{processos_nao_verificados}")
-
-            processos_verificados += 1
-
-            num_processo = linha["Número do Processo"][:25]
-
-            navegador.find_element(By.XPATH,'//*[@id="nrProcessoInput"]').send_keys(num_processo)
-            consulta_processo = navegador.find_element(By.XPATH, '//*[@id="btnPesquisar"]')
-            navegador.execute_script("arguments[0].click();", consulta_processo)
-
-            WebDriverWait(navegador, 25).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="painelForm"]/form')))
-
-            captcha_element = navegador.find_element(By.ID, "imagemCaptcha")
-
-            # Obtém o valor do atributo 'src' da imagem
-            captcha_base64 = captcha_element.get_attribute("src")
-
-            # Remove a parte 'data:image/png;base64,'
-            captcha_base64 = captcha_base64.split(',')[1]
-
-            # Decodifica a string base64 para bytes
-            captcha_bytes = base64.b64decode(captcha_base64)
-
-            captcha_text = resolver_captcha(captcha_base64)
-
-            # Preencher o campo de captcha com a solução
-            navegador.find_element(By.XPATH, '//*[@id="captchaInput"]').send_keys(captcha_text)
-
-            # Rolar até o botão e clicar para enviar o captcha
-            btn_enviar = navegador.find_element(By.ID, "btnEnviar")
-            navegador.execute_script("arguments[0].scrollIntoView(true);", btn_enviar)
-
-            navegador.execute_script("arguments[0].click();", btn_enviar)
-
-            WebDriverWait(navegador, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="painel-titulo"]')))
-
-            wait = WebDriverWait(navegador, 10)
-
-            h1_element = wait.until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="painel-titulo"]//*[@id="titulo-detalhes"]//h1')))
-
-            # Rolando até o elemento caso esteja fora da visão
-            actions = ActionChains(navegador)
-            actions.move_to_element(h1_element).perform()
-
-            # Tentando clicar no elemento
-            h1_element.click()
-
-            # Capturando os dados com XPath
-            orgao_julgador = navegador.find_element(By.XPATH,"//dt[text()='Órgão julgador:']/following-sibling::dd").text
-            data_distribuicao = navegador.find_element(By.XPATH,"//dt[text()='Distribuído:']/following-sibling::dd").text
-            valor_causa = navegador.find_element(By.XPATH,"//dt[text()='Valor da causa:']/following-sibling::dd").text
-            valor_causa = valor_causa.replace('R$', '').replace('.', '').replace(',', '.').strip()
-            valor_causa = float(valor_causa)
-            planilha_dados.at[indice_linha, 'Valor da Causa'] = valor_causa
-
-            assuntos = navegador.find_elements(By.XPATH,
-                                               "//dt[text()='Assunto(s):']/following-sibling::dd[@class='ng-star-inserted']")
-
-            assuntos_list = [assunto.text.strip() for assunto in assuntos]
-            assuntos_separados = ', '.join(assuntos_list)
-
-            polo_passivo = navegador.find_element(By.XPATH,
-                                                  "//div[@class='coluna-polo']//h3[contains(text(), 'Polo passivo')]")
-
-            # Verifica se o título do polo é "Polo Passivo"
-            if polo_passivo:
-                # Captura a seção de reclamados diretamente na coluna do polo passivo
-                reclamados_section = polo_passivo.find_elements(By.XPATH, "following::pje-parte-processo//ul")
-
-                nomes_reclamados = []
-                documentos_reclamados = []
-
-                # Itera sobre cada seção de reclamados
-                for ul in reclamados_section:
-                    # Localiza todos os reclamados dentro da seção
-                    for reclamado in ul.find_elements(By.XPATH, ".//li[contains(@class, 'partes-corpo')]"):
-                        # Capturando o nome do reclamado
-                        nome = reclamado.find_element(By.XPATH,
-                                                      ".//span[@class='nome-parte parte-documento-valido']").text.strip()
-                        nomes_reclamados.append(nome)
-
-                        # Capturando o CNPJ ou CPF do reclamado
-                        documento_element = reclamado.find_element(By.XPATH,
-                                                                   ".//span[contains(text(), 'CPJ:') or contains(text(), 'CPF:')]")
-                        documento = documento_element.text.replace('CPJ: ', '').replace('CPF: ', '').strip()
-                        documentos_reclamados.append(documento)
-
-            if len(nomes_reclamados) > 0:
-
-                planilha_dados.at[indice_linha, 'Reclamado'] = nomes_reclamados[0]
-                planilha_dados.at[indice_linha, 'CPF/CNPJ'] = documentos_reclamados[0]
-                planilha_dados.at[indice_linha, 'Orgão Julgador'] = orgao_julgador
-                planilha_dados.at[indice_linha, 'Data de distribuição'] = data_distribuicao
-                planilha_dados.at[indice_linha, 'Valor da Causa'] = valor_causa
-                planilha_dados.at[indice_linha, 'Assuntos'] = assuntos_separados
-
-                # Se houver mais de um reclamado, adiciona cada um em uma nova linha
-                for i in range(1, len(nomes_reclamados)):  # Começa do segundo reclamado
-                    # Criando uma nova linha para cada reclamado
-                    new_row = pd.DataFrame({
-                        'Reclamado': [nomes_reclamados[i]],
-                        'Número do Processo': [num_processo],
-                        'Reclamante': [linha["Reclamante"]],
-                        'Orgão Julgador': [orgao_julgador],
-                        'Data de distribuição': [data_distribuicao],
-                        'Valor da Causa': [valor_causa],
-                        'Assuntos': [assuntos_separados],  # Corrigido para 'assuntos_separados'
-                        'CPF/CNPJ': [documentos_reclamados[i]]
-                    })
-                    # Inserindo a nova linha no DataFrame
-                    planilha_dados = pd.concat([planilha_dados, new_row], ignore_index=True)
-
-                para_planilha()
-
-            navegador.find_element(By.XPATH, '//*[@id="btnFecharDadosProcessos"]/i').click()
-            time.sleep(0.5)
-            voltar = navegador.find_element(By.XPATH, "/html/body/pje-root/div[2]/pje-menu-lateral/div/ul/li[1]/a")
-            navegador.execute_script("arguments[0].click();", voltar)
+    else:
+        raise Exception(
+            f'Erro ao capturar o bearer_token utilizando Selenium'
+        )
 
 
+def request_processo(processo):
+    url = f'https://pje.trt4.jus.br/pje-consulta-api/api/processos/dadosbasicos/{processo}'
+    headers = {
+        'x-grau-instancia': '1',
+        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36'
+    }
 
-    except:
-        time.sleep(0.5)
-        planilha_dados.at[indice_linha, 'CPF/CNPJ'] = 'Segredo de justiça, Processo não pode ser aberto ou Falha no Captcha'
-        voltar = navegador.find_element(By.XPATH, "/html/body/pje-root/div[2]/pje-menu-lateral/div/ul/li[1]/a")
-        navegador.execute_script("arguments[0].click();", voltar)
+    response = requests.get(url, headers=headers)
 
-        para_planilha()
-        continue
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(
+            f'Erro na API TRF4 que captura o ID do processo (1ª request): {response.status_code} - {response.text}'
+        )
 
 
-navegador.quit()
+def request_processo_id(processo_id):
+    url = f'https://pje.trt4.jus.br/pje-consulta-api/api/processos/{processo_id}'
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36'
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(
+            f'Erro na API TRF4 que captura pega a imagem do Captcha (2ª request): {response.status_code} - {response.text}'
+        )
+
+
+def request_captcha_imagem(imagem):
+    url = 'https://api.anti-captcha.com/createTask'
+    json = {
+        'clientKey': CAPTCHA_API_KEY,
+        'task': {
+            'type': 'ImageToTextTask',
+            'body': imagem,
+            'phrase': False,
+            'case': False,
+            'numeric': False,
+            'math': 0,
+            'minLength': 0,
+            'maxLength': 0
+        }
+    }
+
+    response = requests.post(url, json=json)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(
+            f'Erro na API Captcha que captura a taskId (3ª request): {response.status_code} - {response.text}'
+        )
+
+
+def request_captcha_id(task_id):
+    url = 'https://api.anti-captcha.com/getTaskResult'
+    json = {
+        'clientKey': CAPTCHA_API_KEY,
+        'taskId': task_id,
+    }
+
+    while True:
+        time.sleep(.5)
+        response = requests.post(url, json=json)
+
+        if response.status_code == 200:
+            if response.json().get('status') != 'processing':
+                return response.json()
+
+
+def request_processo_captcha(processo_id, token, resposta, bearer_token):
+    url = f'https://pje.trt4.jus.br/pje-consulta-api/api/processos/{processo_id}?tokenDesafio={token}&resposta={resposta}'
+    headers = {
+        'x-grau-instancia': '1',
+        'authorization': f'Bearer {bearer_token}',
+        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.200 Mobile Safari/537.36'
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+
+    else:
+        print('Não foi possivel validar o AccessToken do processo. O processo será reprocessado...')
+        raise Exception(
+            f'Erro na API TRF4 que captura as informações do processo (5ª request): {response.status_code} - {response.text}'
+        )
+
+
+def padronizar_informacoes(processo, informacoes_processo):
+    informacoes = []
+    if informacoes_processo.get('poloPassivo'):
+        for reclamado in informacoes_processo.get('poloPassivo'):
+            data = datetime.fromisoformat(informacoes_processo.get('distribuidoEm')).strftime('%d/%m/%Y')
+            valor = f"{informacoes_processo.get('valorDaCausa')}".replace('.', ',')
+
+            informacoes.append({
+                'Reclamado': reclamado.get('nome').strip(),
+                'Número do Processo': informacoes_processo.get('numero'),
+                'Reclamante': informacoes_processo.get('poloAtivo')[0].get('nome').strip(),
+                'Orgão Julgador': informacoes_processo.get('orgaoJulgador').strip(),
+                'Data de Distribuição': data,
+                'Valor da Causa': valor,
+                'Assuntos': ', '.join(
+                    [assunto.get('descricao').strip() for assunto in informacoes_processo.get('assuntos')]),
+                'CPF/CNPJ': reclamado.get('documento'),
+            })
+
+    else:
+        mensagemErro = informacoes_processo.get('mensagemErro')
+        if mensagemErro:
+            informacoes.append({
+                'Número do Processo': processo,
+                'CPF/CNPJ': mensagemErro
+            })
+            print(f'Não foi possível obter as informações do processo: {mensagemErro}')
+
+        else:
+            print('Não foi possivel validar o Captcha do processo. O processo será reprocessado...')
+            raise Exception('Não foi possivel validar o Captcha do processo.')
+
+    return informacoes
+
+
+def salvar_informacoes_no_json(informacoes):
+    if os.path.exists(f'{ARQUIVO}.json'):
+        with open(f'{ARQUIVO}.json', 'r') as f:
+            dados = json.load(f)
+    else:
+        dados = []
+
+    dados.append(informacoes)
+
+    with open(f'{ARQUIVO}.json', 'w') as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
+
+
+def salvar_informacoes_no_excel():
+    with open(f'{ARQUIVO}.json', 'r') as f:
+        dados = json.load(f)
+
+    dados_flat = []
+    for grupo in dados:
+        for registro in grupo:
+            dados_flat.append(registro)
+
+    df = pd.DataFrame(dados_flat)
+    df.to_excel(f'{ARQUIVO}.xlsx', index=False, sheet_name="Processos")
+
+    if os.path.exists(f'{ARQUIVO}.json'):
+        os.remove(f'{ARQUIVO}.json')
+
+
+lock = threading.Lock()
+executar()
