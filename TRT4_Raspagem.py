@@ -14,9 +14,9 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
 LOGIN = '00166687073'
 SENHA = '@Dkz299302'
-CAPTCHA_API_KEY = 'c8037b3c05e376ca8d20124521071adf'
+CAPTCHA_API_KEY = 'a89345c962e2eba448e571a6d0143363'
 NOME_ARQUIVO_PARA_SALVAR = 'Dados_TRF4'
-NOME_ARQUIVO_RESTRICOES = 'Restricoes.xlsx'
+NOME_ARQUIVO_RESTRICOES = 'Restricoes.csv'
 
 
 def executar():
@@ -81,7 +81,7 @@ def pegar_processos():
 
 
 def pegar_cnpj_nomes_comparacao():
-    planilha_restricoes = pd.read_excel(NOME_ARQUIVO_RESTRICOES)
+    planilha_restricoes = pd.read_csv(NOME_ARQUIVO_RESTRICOES)
     cnpjs = planilha_restricoes.iloc[:, 0].dropna().astype(str).str.strip().tolist()
     nomes = planilha_restricoes.iloc[:, 1].dropna().astype(str).str.strip().tolist()
 
@@ -260,7 +260,7 @@ def padronizar_informacoes(informacoes_processo, cnpjs_para_comparacao, nomes_pa
             parceiro_por_nome = any(nome.lower() in nome_reclamado.lower() for nome in nomes_para_comparacao)
             parceiro_por_cnpj = any(cnpj == cnpj_reclamado for cnpj in cnpjs_para_comparacao)
 
-            if not parceiro_por_nome and not parceiro_por_cnpj:
+            if not parceiro_por_nome and not parceiro_por_cnpj and cnpj_reclamado:
                 informacoes.append({
                     'Reclamado': nome_reclamado,
                     'Número do Processo': informacoes_processo.get('numero'),

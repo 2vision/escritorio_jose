@@ -4,6 +4,7 @@ import PyPDF2
 import openpyxl
 from datetime import datetime
 
+link_diarios = 'https://dejt.jt.jus.br/dejt/f/n/diariocon'
 def extract_information(file_path):
     with open(file_path, 'rb') as pdf_file:
         pdf = PyPDF2.PdfReader(pdf_file)
