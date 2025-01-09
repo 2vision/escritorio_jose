@@ -14,13 +14,14 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
 LOGIN = '00166687073'
 SENHA = '@Dkz299302'
-CAPTCHA_API_KEY = 'a89345c962e2eba448e571a6d0143363'
-ARQUIVO = 'Dados_TRF4'
-LISTA_PARCEIROS = []
+CAPTCHA_API_KEY = 'c8037b3c05e376ca8d20124521071adf'
+NOME_ARQUIVO_PARA_SALVAR = 'Dados_TRF4'
+NOME_ARQUIVO_RESTRICOES = 'Restricoes.xlsx'
 
 
 def executar():
     processos_pendentes = pegar_processos()
+    cnpjs_para_comparacao, nomes_para_comparacao = pegar_cnpj_nomes_comparacao()
     print('Iniciando captura de token para autenticação...')
     bearer_token = pegar_bearer_token(processos_pendentes[0])
     print('Token capturado.')
@@ -31,7 +32,7 @@ def executar():
 
         def executar_todos_processos(processo):
             try:
-                executar_processo(processo, bearer_token)
+                executar_processo(processo, bearer_token, cnpjs_para_comparacao, nomes_para_comparacao)
             except:
                 falhas.append(processo)
 
@@ -44,7 +45,7 @@ def executar():
     print('Todos os processos foram finalizados.')
 
 
-def executar_processo(processo, bearer_token):
+def executar_processo(processo, bearer_token, cnpjs_para_comparacao, nomes_para_comparacao):
     print(f'Processando o processo número {processo}...')
     # Request para pegar o ID do processo
     response_processo = request_processo(processo)
@@ -66,16 +67,25 @@ def executar_processo(processo, bearer_token):
 
     # Request para pegar as informações do processo
     informacoes_processo = request_processo_captcha(processo_id, token_desafio, resposta, bearer_token)
-    informacoes = padronizar_informacoes(informacoes_processo)
+    informacoes = padronizar_informacoes(informacoes_processo, cnpjs_para_comparacao, nomes_para_comparacao)
 
-    with lock:
-        salvar_informacoes_no_json(informacoes)
+    if informacoes:
+        with lock:
+            salvar_informacoes_no_json(informacoes)
     print(f'Informações do processo {processo} salvas com sucesso!')
 
 
 def pegar_processos():
     planilha_dados = pd.read_excel('TRT.xlsx', sheet_name='Plan1')
     return list(planilha_dados.iloc[:, 1])
+
+
+def pegar_cnpj_nomes_comparacao():
+    planilha_restricoes = pd.read_excel(NOME_ARQUIVO_RESTRICOES)
+    cnpjs = planilha_restricoes.iloc[:, 0].dropna().astype(str).str.strip().tolist()
+    nomes = planilha_restricoes.iloc[:, 1].dropna().astype(str).str.strip().tolist()
+
+    return cnpjs, nomes
 
 
 def pegar_bearer_token(processo):
@@ -238,17 +248,19 @@ def request_processo_captcha(processo_id, token, resposta, bearer_token):
         )
 
 
-def padronizar_informacoes(informacoes_processo):
+def padronizar_informacoes(informacoes_processo, cnpjs_para_comparacao, nomes_para_comparacao):
     informacoes = []
     if informacoes_processo.get('poloPassivo'):
         for reclamado in informacoes_processo.get('poloPassivo'):
             nome_reclamado = reclamado.get('nome').strip()
-            data = datetime.fromisoformat(informacoes_processo.get('distribuidoEm')).strftime('%d/%m/%Y')
+            cnpj_reclamado = reclamado.get('documento')
+            data = datetime.fromisoformat(informacoes_processo.get('distribuidoEm').split('T')[0]).strftime('%d/%m/%Y')
             valor = f"{informacoes_processo.get('valorDaCausa')}".replace('.', ',')
 
-            nao_e_parceiro = not any(item.lower() in nome_reclamado.lower() for item in LISTA_PARCEIROS)
+            parceiro_por_nome = any(nome.lower() in nome_reclamado.lower() for nome in nomes_para_comparacao)
+            parceiro_por_cnpj = any(cnpj == cnpj_reclamado for cnpj in cnpjs_para_comparacao)
 
-            if not LISTA_PARCEIROS or nao_e_parceiro:
+            if not parceiro_por_nome and not parceiro_por_cnpj:
                 informacoes.append({
                     'Reclamado': nome_reclamado,
                     'Número do Processo': informacoes_processo.get('numero'),
@@ -274,20 +286,20 @@ def padronizar_informacoes(informacoes_processo):
 
 
 def salvar_informacoes_no_json(informacoes):
-    if os.path.exists(f'{ARQUIVO}.json'):
-        with open(f'{ARQUIVO}.json', 'r') as f:
+    if os.path.exists(f'{NOME_ARQUIVO_PARA_SALVAR}.json'):
+        with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r') as f:
             dados = json.load(f)
     else:
         dados = []
 
     dados.append(informacoes)
 
-    with open(f'{ARQUIVO}.json', 'w') as f:
+    with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'w') as f:
         json.dump(dados, f, indent=4, ensure_ascii=False)
 
 
 def salvar_informacoes_no_excel():
-    with open(f'{ARQUIVO}.json', 'r') as f:
+    with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r') as f:
         dados = json.load(f)
 
     dados_flat = []
@@ -296,10 +308,10 @@ def salvar_informacoes_no_excel():
             dados_flat.append(registro)
 
     df = pd.DataFrame(dados_flat)
-    df.to_excel(f'{ARQUIVO}.xlsx', index=False, sheet_name="Processos")
+    df.to_excel(f'{NOME_ARQUIVO_PARA_SALVAR}.xlsx', index=False, sheet_name="Processos")
 
-    if os.path.exists(f'{ARQUIVO}.json'):
-        os.remove(f'{ARQUIVO}.json')
+    if os.path.exists(f'{NOME_ARQUIVO_PARA_SALVAR}.json'):
+        os.remove(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
 
 
 lock = threading.Lock()
