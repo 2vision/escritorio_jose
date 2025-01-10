@@ -257,14 +257,20 @@ if not verificado:
 
                     prox_linha = planilha_dados["Nº do Processo"].last_valid_index()
 
-                    if pd.isna(prox_linha):
+                    if prox_linha is None:  # Caso todos os valores sejam nulos
                         prox_linha = 0
-
                     else:
-                        prox_linha += 1
+                        prox_linha = int(prox_linha) + 1
 
-                    if any(banco in polo_ativo for banco in bancos_para_verificar) and numero_processo_banco != '' and data_processo_banco != '' and classe_judicial_banco != '' and polo_ativo != '' and povo_passivo != '':
-
+                    if (
+                            not any(banco in povo_passivo for banco in
+                                    bancos_para_verificar) and
+                            numero_processo_banco != '' and
+                            data_processo_banco != '' and
+                            classe_judicial_banco != '' and
+                            polo_ativo != '' and
+                            povo_passivo != ''
+                    ):
                         planilha_dados.loc[prox_linha, "Nº do Processo"] = numero_processo_banco
                         planilha_dados.loc[prox_linha, "Data da distribuição"] = data_processo_banco
                         planilha_dados.loc[prox_linha, "Classe Judicial"] = classe_judicial_banco
