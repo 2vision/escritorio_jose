@@ -242,8 +242,7 @@ if not verificado:
 
             while True:
 
-
-
+                time.sleep(6)
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")
 
