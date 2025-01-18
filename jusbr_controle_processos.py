@@ -17,8 +17,9 @@ def executar():
 
     for processo in processos:
         dados = api_jusbr(processo.get('numero_processo'))
-        dados_prontos = dados_formatados(dados, processo.get('numero_processo'), processo.get('ultimo_movimento'))
+        dados_prontos, movimentos = dados_formatados(dados, processo.get('numero_processo'), processo.get('ultimo_movimento'))
         salvar_informacoes_no_json(dados_prontos)
+        salvar_informacoes_no_json(movimentos)
     salvar_informacoes_no_excel()
 
 
@@ -97,7 +98,11 @@ def dados_formatados(dados, numero_processo, ultimo_movimento):
             'Polo passivo': nome_passivo.title()
         })
 
-    return informacoes, proximo_movimento_atual
+    informacoes_movimentos = {
+                                'processo' : numero_processo,
+                                'movimento' : proximo_movimento_atual
+    }
+    return informacoes, informacoes_movimentos
 
 
 def salvar_informacoes_no_json(informacoes):
