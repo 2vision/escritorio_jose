@@ -16,11 +16,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-planilha_dados = pd.read_excel("Consulta_TJMG.xlsx", sheet_name="Plan1")
+planilha_dados = pd.read_excel("Excel/Consulta_TJMG.xlsx", sheet_name="Plan1")
 
 
 def para_planilha():
-    planilha_dados.to_excel("Consulta_TJMG.xlsx", sheet_name="Plan1", index=False)
+    planilha_dados.to_excel("Excel/Consulta_TJMG.xlsx", sheet_name="Plan1", index=False)
 
 chrome_options = Options()
 chrome_options.add_experimental_option("detach", True)

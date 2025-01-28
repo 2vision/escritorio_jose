@@ -200,8 +200,8 @@ if not verificado:
             print(f'Iniciando busca de {classe} ...')
 
             time.sleep(4)
-            classe_judicial_inserir = navegador.find_element(By.XPATH, '//*[@id="fPP:j_id253:classeJudicial"]').send_keys(classe)
-
+            classe_judicial_inserir = navegador.find_element(By.XPATH, '//input[@alt="Classe judicial"]').send_keys(
+                classe)
 
             data_input_element = navegador.find_element(By.XPATH,
                                                         '//*[@id="fPP:dataAutuacaoDecoration:dataAutuacaoInicioInputDate"]')
@@ -228,7 +228,7 @@ if not verificado:
                 EC.presence_of_element_located((By.CLASS_NAME, "rich-table-cell")))
 
             pagina_atual = 1
-            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id462"]/div[2]/span').text
+            total_paginas = navegador.find_element(By.XPATH, '//span[@class="text-muted"]').text
             total_paginas = total_paginas.split(" ")[0]
             total_paginas = math.ceil(int(total_paginas)/20)
 
