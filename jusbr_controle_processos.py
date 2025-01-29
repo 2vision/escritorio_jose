@@ -3,6 +3,7 @@ import locale
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from itertools import cycle
 
@@ -22,15 +23,15 @@ def executar():
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
     processos = capturar_processos_sheets()
 
-    for processo in processos:
-        token = next(BEARER_CODES)
-        processar_processo(processo, token)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        executor.map(processar_processo, processos)
 
     salvar_informacoes_no_excel()
 
 
-def processar_processo(processo, token):
+def processar_processo(processo):
     try:
+        token = next(BEARER_CODES)
         numero_processo = processo.get('numero_processo')
         tipo_processo = processo.get('tipo_processo')
         ultimo_movimento = processo.get('ultimo_movimento')
