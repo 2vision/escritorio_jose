@@ -29,17 +29,15 @@ def validar_telefone(telefone):
     return f'+{codigo_pais}{ddd}{numero}'
 
 
+# Função para formatar CPF corretamente
 def formatar_cpf(cpf):
     if pd.isna(cpf) or str(cpf).strip().lower() in ('nan', ''):
         return ""
     try:
-        # Garantir que cpf seja tratado como string, removendo qualquer ponto, traço ou vírgula
         cpf = str(cpf).replace('.', '').replace('-', '').zfill(11)
-        # Garante que o CPF tem exatamente 11 dígitos
         return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
     except ValueError:
-        return ""  # Retorna vazio se não puder ser convertido
-
+        return ""
 
 def replicar_linhas(planilha, indice_linha, socios_com_telefone, email, is_cnpj):
     if not socios_com_telefone:
@@ -59,10 +57,9 @@ def replicar_linhas(planilha, indice_linha, socios_com_telefone, email, is_cnpj)
     # Formatar documento corretamente
     documento = str(primeiro_socio.get("Documento", "")).strip()
     if len(documento) <= 11:
-        documento = documento.replace('.0','')
+        documento = formatar_cpf(documento).replace('.0','')
 
-    documento = documento.replace('.0','')
-    planilha.at[indice_linha, "SocioDocumento"] = formatar_cpf(documento)
+    planilha.at[indice_linha, "SocioDocumento"] = documento
     planilha.at[indice_linha, "SocioNome"] = primeiro_socio.get("Nome", "")
 
     return planilha
@@ -108,5 +105,14 @@ for arquivo in arquivos_no_diretorio:
                         socios_com_telefone = [{"Telefone": f"+55{t}"} for t in telefones if str(t).lower() not in ('nan', 'nannan', '')]
                     planilha_diretorio = replicar_linhas(planilha_diretorio, indice_linha, socios_com_telefone, email, False)
 
+        # Criar colunas CPF e CNPJ
+        planilha_diretorio["CPF"] = planilha_diretorio["CPF/CNPJ"].apply(
+            lambda x: x if len(str(x).replace(".", "").replace("-", "").replace("/", "")) == 11 else "")
+        planilha_diretorio["CNPJ"] = planilha_diretorio["CPF/CNPJ"].apply(
+            lambda x: x if len(str(x).replace(".", "").replace("-", "").replace("/", "")) == 14 else "")
+
         planilha_diretorio = planilha_diretorio[planilha_diretorio['Telefone'].notna() & (planilha_diretorio['Telefone'] != '')]
         planilha_diretorio.to_excel(os.path.join(diretorio, arquivo), sheet_name="Plan1", index=False)
+
+
+
