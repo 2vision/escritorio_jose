@@ -28,16 +28,15 @@ def validar_telefone(telefone):
 
     return f'+{codigo_pais}{ddd}{numero}'
 
-
-# Função para formatar CPF corretamente
 def formatar_cpf(cpf):
     if pd.isna(cpf) or str(cpf).strip().lower() in ('nan', ''):
         return ""
-    try:
-        cpf = str(cpf).replace('.', '').replace('-', '').zfill(11)
+    cpf = cpf.replace('.0', '')
+    if len(cpf) == 11:
         return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-    except ValueError:
-        return ""
+    else:
+        cpf = cpf.zfill(11)
+        return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
 
 def replicar_linhas(planilha, indice_linha, socios_com_telefone, email, is_cnpj):
     if not socios_com_telefone:
@@ -54,15 +53,16 @@ def replicar_linhas(planilha, indice_linha, socios_com_telefone, email, is_cnpj)
     # Usar apenas uma coluna para e-mail do sócio
     planilha.at[indice_linha, "SOCIOEmail"] = email if email else ""
 
-    # Formatar documento corretamente
+    # Formatar documento corretamente apenas se for CPF (11 dígitos)
     documento = str(primeiro_socio.get("Documento", "")).strip()
-    if len(documento) <= 11:
-        documento = formatar_cpf(documento).replace('.0','')
+
+    documento = formatar_cpf(documento)
 
     planilha.at[indice_linha, "SocioDocumento"] = documento
     planilha.at[indice_linha, "SocioNome"] = primeiro_socio.get("Nome", "")
 
     return planilha
+
 
 
 # Loop pelos arquivos no diretório
