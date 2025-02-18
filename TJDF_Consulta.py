@@ -28,8 +28,10 @@ def para_planilha():
 chrome_options = Options()
 chrome_options.add_experimental_option("detach", True)
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-chrome_options.add_argument('log-level=3')  # para ignorar warnings
-chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])  # para ignorar warnings
+chrome_options.add_argument('log-level=3')
+chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--no-sandbox")
 
 # Obtenha o caminho do ChromeDriver do gerenciador.py
 def obter_caminho_chromedriver():
@@ -280,7 +282,7 @@ if not verificado:
                         planilha_dados.loc[prox_linha, "Nº do Processo"] = numero_processo_banco
                         planilha_dados.loc[prox_linha, "Data da distribuição"] = data_processo_banco
                         planilha_dados.loc[prox_linha, "Classe Judicial"] = classe_judicial_banco
-                        planilha_dados.loc[prox_linha, "Banco"] = polo_ativo
+                        planilha_dados.loc[prox_linha, "Polo Ativo"] = polo_ativo
                         planilha_dados.loc[prox_linha, "Cliente"] = povo_passivo
                         planilha_dados.loc[prox_linha, "Tribunal"] = "TJDF"
 
@@ -420,7 +422,6 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
                 # Encontre o elemento <dt> com o texto 'Valor da causa'
                 element_dt = soup.find('dt', string=re.compile(r'Valor da causa', re.IGNORECASE))
 
-
                 # Se o elemento <dt> for encontrado, pegue o próximo elemento <dd> que contém o valor
                 if element_dt:
                     value_element = element_dt.find_next('dd')
@@ -439,7 +440,6 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
                 if polo_passivo_div:
                     cpf_cnpj_span = polo_passivo_div.find('span', string=re.compile(r'(CPF|CNPJ):'))
 
-
                     if cpf_cnpj_span:
                         cpf_cnpj_text = cpf_cnpj_span.get_text(strip=True)
                         cpf_cnpj = re.search(r'(CPF|CNPJ): (\S+)', cpf_cnpj_text).group(2)
@@ -449,10 +449,37 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
                 planilha_dados.loc[indice_linha2, "CPF/CNPJ"] = "CPF não encontrado"
 
             try:
+                # Encontre o elemento <dt> com o texto 'Assunto'
+                element_dt_assunto = soup.find('dt', string=re.compile(r'Assunto', re.IGNORECASE))
+
+                # Se o elemento <dt> for encontrado, pegue o próximo elemento <dd> que contém o assunto
+                if element_dt_assunto:
+                    assunto_element = element_dt_assunto.find_next('dd')
+                    assunto = assunto_element.get_text(strip=True).replace("<br>", " / ")
+                    planilha_dados.loc[indice_linha2, "Assunto"] = assunto
+            except:
+                planilha_dados.loc[indice_linha2, "Assunto"] = "Assunto não encontrado"
+
+            try:
+                # Encontre o elemento <dt> com o texto 'Órgão Julgador'
+                element_dt_orgao = soup.find('dt', string=re.compile(r'Órgão Julgador', re.IGNORECASE))
+
+                # Se o elemento <dt> for encontrado, pegue o próximo elemento <dd> que contém o órgão julgador
+                if element_dt_orgao:
+                    orgao_element = element_dt_orgao.find_next('dd')
+                    orgao_julgador = orgao_element.get_text(strip=True)
+                    planilha_dados.loc[indice_linha2, "Órgão Julgador"] = orgao_julgador
+            except:
+                planilha_dados.loc[indice_linha2, "Órgão Julgador"] = "Órgão Julgador não encontrado"
+
+
+            try:
                 tem_advogado = navegador.find_element(By.XPATH, "//*[@id='poloPassivo']/table/tbody/tr/td/ul/li/small/span/span")
                 planilha_dados.loc[indice_linha2, "Advogado"] = "Já tem advogado"
             except:
                 planilha_dados.loc[indice_linha2, "Advogado"] = "Não tem advogado"
+
+            para_planilha()
 
             para_planilha()
 
