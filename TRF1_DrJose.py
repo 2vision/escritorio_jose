@@ -44,6 +44,7 @@ termos_de_pesquisa = ["Execução Fiscal"]
 
 navegador.get("https://pje1g.trf1.jus.br/pje/login.seam?loginComCertificado=false")
 
+input("Pressione Enter após realizar o login...")
 
 data_fixa_inicial = "20/03/2023"
 data_fixa_final = "20/03/2023"
@@ -247,7 +248,7 @@ if not verificado:
                 EC.presence_of_element_located((By.CLASS_NAME, "rich-table-cell")))
 
             pagina_atual = 1
-            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id464"]/div[2]/span').text
+            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id468"]/div[2]/span').text
 
             if "Pesquisa limitada ao retorno de 100 processos" in total_paginas:
                 total_paginas = math.ceil(100 / 20)
@@ -266,7 +267,7 @@ if not verificado:
 
             while True:
 
-                time.sleep(10)
+                time.sleep(1)
 
 
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
@@ -274,7 +275,6 @@ if not verificado:
 
                 time.sleep(2)
                 for processos in colunas:
-                    time.sleep(1)
                     td_elements2 = processos.find_elements(By.TAG_NAME, "td")
                     numero_processo_banco = td_elements2[1].get_attribute("innerText")
                     data_processo_banco = td_elements2[4].get_attribute("innerText")
@@ -289,8 +289,6 @@ if not verificado:
 
                     else:
                         prox_linha += 1
-
-                    time.sleep(2)
 
                     planilha_dados.loc[prox_linha, "Nº do Processo"] = numero_processo_banco
                     planilha_dados.loc[prox_linha, "Data da distribuição"] = data_processo_banco
@@ -313,7 +311,7 @@ if not verificado:
                 script = "arguments[0].click();"
                 navegador.execute_script(script, paginacao_element)
 
-                time.sleep(8)
+                time.sleep(2)
 
                 if pagina_atual == total_paginas:
                     break

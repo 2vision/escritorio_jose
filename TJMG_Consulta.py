@@ -47,6 +47,8 @@ termos_de_pesquisa = ["Execução Fiscal"]
 
 navegador.get("https://pje.tjmg.jus.br/pje/login.seam")
 
+input("Pressione Enter após realizar o login...")
+
 data_fixa_inicial = "20/03/2023"
 data_fixa_final = "20/03/2023"
 valor_acao_fixa = "40000"
