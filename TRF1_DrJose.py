@@ -269,11 +269,13 @@ if not verificado:
 
                 time.sleep(1)
 
+                WebDriverWait(navegador, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[@id='fPP:processosTable:tb']")))
 
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")
 
-                time.sleep(2)
+                time.sleep(1)
                 for processos in colunas:
                     td_elements2 = processos.find_elements(By.TAG_NAME, "td")
                     numero_processo_banco = td_elements2[1].get_attribute("innerText")
