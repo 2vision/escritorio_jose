@@ -15,7 +15,7 @@ PASTA_GERAL_ID = '1BJ1HjguP5Z8QaLkTp85-oJtJqTiwMdJi'
 SHEET_ID = '1hwUdFxkPQkdovOGpmMt8cqXbMnZoMFsFUKGefL8-bOU'
 
 # Configuração de autenticação
-CREDENTIALS_FILE = 'keys/mtadv-449314-47f9a9de429d.json'
+CREDENTIALS_FILE = 'mtadv-449314-47f9a9de429d.json'
 SCOPES = ['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive']
 
 
@@ -51,7 +51,7 @@ def processar_dados(sheet, tipo):
 
         if tipo == 'PF':
             processo = {
-                'nome': row['Nome'],
+                'nome': str(row['Nome']).upper(),
                 'nacionalidade': row['Nacionalidade'],
                 'cpf': formatar_cpf(row['CPF']),
                 'endereco': row['Endereço'].title(),
@@ -65,7 +65,7 @@ def processar_dados(sheet, tipo):
                 'processo': row['Processo'],
                 'numero_vara': row['nº Vara'],
                 'competencia': row['Competência'],
-                'ente': row['Ente'],
+                'ente': str(row['Ente']).upper(),
                 'jurisdicao': row['Jurisdição'].title(),
                 'valor_causa': formatar_valor(row['Valor da causa']),
                 'valor_honorarios_iniciais': formatar_valor(row['Valor de honorários iniciais Númeral']),
@@ -79,7 +79,7 @@ def processar_dados(sheet, tipo):
             }
         else:
             processo = {
-                'nome_da_empresa': row['Nome da empresa'],
+                'nome_da_empresa': str(row['Nome da empresa']).upper(),
                 'cnpj': formatar_cnpj(row['CNPJ']),
                 'endereco_pj': row['Endereço'].title(),
                 'numero_endereco_pj': row['Número'],
@@ -88,7 +88,7 @@ def processar_dados(sheet, tipo):
                 'cidade_pj': row['Cidade'].title(),
                 'estado_pj': row['Estado'],
                 'cep_pj': formatar_cep(row['CEP']),
-                'nome_representante': row['Nome do representante'],
+                'nome_representante': str(row['Nome do representante']).upper(),
                 'nacionalidade_representante': row['Nacionalidade'],
                 'cpf_representante': formatar_cpf(row['CPF']),
                 'endereco_representante': row['Endereço Representante'].title(),
@@ -103,7 +103,7 @@ def processar_dados(sheet, tipo):
                 'vara': row['nº Vara'],
                 'jurisdicao': row['Jurisdição'].title(),
                 'competencia': row['Competência'],
-                'ente': row['Ente'],
+                'ente': str(row['Ente']).upper(),
                 'valor_causa': formatar_valor(row['Valor da causa']),
                 'valor_honorarios': formatar_valor(row['Valor de honorários iniciais Númeral']),
                 'valor_honorarios_extenso': valor_por_extenso(
