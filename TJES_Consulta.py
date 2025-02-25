@@ -243,7 +243,10 @@ if not verificado:
 
             while True:
 
+                time.sleep(1)
 
+                WebDriverWait(navegador, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[@id='fPP:processosTable:tb']")))
 
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")
@@ -280,8 +283,6 @@ if not verificado:
                         planilha_dados.loc[prox_linha, "Cliente"] = povo_passivo
                         planilha_dados.loc[prox_linha, "Tribunal"] = "TJES"
 
-                        time.sleep(0.5)
-
                         para_planilha()
 
                 navegador.execute_script("window.scrollTo(0, -document.body.scrollHeight);")
@@ -293,8 +294,6 @@ if not verificado:
                 # Executa um script JavaScript para clicar no elemento de paginação
                 script = "arguments[0].click();"
                 navegador.execute_script(script, paginacao_element)
-
-                time.sleep(8)
 
                 if pagina_atual == total_paginas:
                     break
