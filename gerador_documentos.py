@@ -133,6 +133,7 @@ def gerar_documentos(processo, tipo):
     gerar_doc_drive(drive_service, docs_service, procuracao_id, processo, pasta_id, f'Procuracao_{tipo}_{nome_pasta}')
 
 
+
 def criar_pasta(drive_service, nome_pasta):
     metadata = {'name': nome_pasta, 'mimeType': 'application/vnd.google-apps.folder'}
     pasta = drive_service.files().create(body=metadata, fields='id').execute()
