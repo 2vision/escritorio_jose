@@ -25,10 +25,14 @@ def executar():
         'PJ': carregar_dados_sheets('PJ'),
     }
 
+    registros_executados = {'PF': [], 'PJ': []}
+
     for tipo, dados in planilhas.items():
-        processos = processar_dados(dados, tipo)
+        processos, registros_executados = processar_dados(dados, tipo, registros_executados)
         for processo in processos:
             gerar_documentos(processo, tipo)
+
+    atualizar_planilha(planilhas, registros_executados)
 
 
 def carregar_dados_sheets(aba):
@@ -37,14 +41,17 @@ def carregar_dados_sheets(aba):
     return planilha.worksheet(aba)
 
 
-def processar_dados(sheet, tipo):
+def processar_dados(sheet, tipo, registros_executados):
     df = pd.DataFrame(sheet.get_all_values())
     df.columns = df.iloc[0]
     df = df[1:].reset_index(drop=True)
 
     processos = []
 
-    for _, row in df.iterrows():
+    for index, row in df.iterrows():
+        if row.get('Gerado', '').strip().lower() == 'sim':
+            continue
+
         valor_honorarios = converter_float(row['Valor de honorários iniciais Númeral'])
         parcelas = converter_int(row['Parcelas'])
         valor_parcela = valor_honorarios / parcelas
@@ -117,7 +124,9 @@ def processar_dados(sheet, tipo):
 
         processos.append(processo)
 
-    return processos
+        registros_executados[tipo].append(index + 2)
+
+    return processos, registros_executados
 
 
 def gerar_documentos(processo, tipo):
@@ -131,7 +140,6 @@ def gerar_documentos(processo, tipo):
     contrato_id, procuracao_id = DOCUMENTOS[f'CONTRATO_{tipo}'], DOCUMENTOS[f'PROCURACAO_{tipo}']
     gerar_doc_drive(drive_service, docs_service, contrato_id, processo, pasta_id, f'Contrato_{tipo}_{nome_pasta}')
     gerar_doc_drive(drive_service, docs_service, procuracao_id, processo, pasta_id, f'Procuracao_{tipo}_{nome_pasta}')
-
 
 
 def criar_pasta(drive_service, nome_pasta):
@@ -161,6 +169,28 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
 
     docs_service.documents().batchUpdate(documentId=novo_doc_id, body={'requests': requests}).execute()
     print(f'Documento gerado: {nome_arquivo}')
+
+
+def atualizar_planilha(planilhas, registros_executados):
+    updates = []
+
+    for tipo, sheet in planilhas.items():
+        for linha in registros_executados[tipo]:
+            if tipo == 'PF':
+                coluna = 'U'
+                updates.append({
+                    "range": f"{coluna}{linha}",
+                    "values": [["Sim"]]
+                })
+            elif tipo == 'PJ':
+                coluna = 'AD'
+                updates.append({
+                    "range": f"{coluna}{linha}",
+                    "values": [["Sim"]]
+                })
+
+        if updates:
+            sheet.batch_update(updates)
 
 
 def converter_float(valor):
