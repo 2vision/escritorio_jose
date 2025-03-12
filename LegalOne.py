@@ -27,15 +27,21 @@ def executar():
 
     processos_alterados = []
     if processos:
+        print('Começou a dar baixa nos processos!')
+        total_processos = len(processos)
+
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_processo = {
                 executor.submit(alterar_processo, bearer_token, processo): processo for processo in processos
             }
 
-            for future in as_completed(future_to_processo):
+            for i, future in enumerate(as_completed(future_to_processo), 1):
                 processo = future.result()
                 if processo:
                     processos_alterados.append(processo)
+
+                if i % 100 == 0 or i == total_processos:
+                    print(f'{i}/{total_processos} processos concluídos...')
 
     else:
         print('Nenhum processo foi encontrado!')
@@ -139,7 +145,8 @@ def lista_de_processos(bearer_token, publication_type, lista_ids):
             'type': '[Publication] getAll'
         }
 
-        print(f'Capturando processos da página {page}')
+        publication_type_text = 'Publicação' if publication_type == 1 else 'Intimação'
+        print(f'Capturando processos da página {page} da {publication_type_text}')
 
         response = requests.post(url, headers=headers, data=json.dumps(payload))
         page += 1
