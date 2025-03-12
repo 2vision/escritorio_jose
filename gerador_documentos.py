@@ -172,9 +172,9 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
 
 
 def atualizar_planilha(planilhas, registros_executados):
-    updates = []
 
     for tipo, sheet in planilhas.items():
+        updates = []
         for linha in registros_executados[tipo]:
             if tipo == 'PF':
                 coluna = 'U'

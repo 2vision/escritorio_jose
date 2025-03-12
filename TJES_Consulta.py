@@ -472,9 +472,7 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
 
             para_planilha()
 
-            para_planilha()
-
-            navegador.close()
+            navegador.execute_script("window.close();")
 
             navegador.switch_to.window(navegador.window_handles[0])
 
