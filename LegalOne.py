@@ -1,4 +1,5 @@
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
@@ -12,6 +13,7 @@ from seleniumwire import webdriver
 LOGIN = 'raissa.zp'
 SENHA = 'Raissa1001'
 PUBLICATION_TYPES = [1, 4]
+ARQUIVO = 'processos'
 
 
 def executar():
@@ -39,6 +41,7 @@ def executar():
                 processo = future.result()
                 if processo:
                     processos_alterados.append(processo)
+                    salvar_informacoes_no_json(processo, ARQUIVO)
 
                 if i % 100 == 0 or i == total_processos:
                     print(f'{i}/{total_processos} processos concluídos...')
@@ -47,7 +50,8 @@ def executar():
         print('Nenhum processo foi encontrado!')
 
     if processos_alterados:
-        gerar_excel(processos_alterados)
+        gerar_excel(processos_alterados, ARQUIVO)
+        deletar_json(ARQUIVO)
 
     else:
         print('Nenhum processo foi alterado!')
@@ -177,31 +181,31 @@ def lista_de_processos(bearer_token, publication_type, lista_ids):
 
 
 def alterar_processo(bearer_token, processo):
-    url = "https://legalone-prod-webapp-eastus2-api.azure-api.net/prod//webapi/api/internal/publications/SetPublicationTreatStatus/"
+    url = 'https://legalone-prod-webapp-eastus2-api.azure-api.net/prod//webapi/api/internal/publications/SetPublicationTreatStatus/'
 
     headers = {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-        "authenticationmethod": "ASYMMETRIC_JWT_TOKEN",
-        "authorization": bearer_token,
-        "content-type": "application/json",
-        "distribution": "FirmsBrazil",
-        "ocp-apim-subscription-key": "b1159d90df8d45148b4f5721e2752efc",
-        "sec-ch-ua": "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"133\", \"Chromium\";v=\"133\"",
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": "\"Linux\"",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "cross-site",
-        "tenancy": "mtadvogados",
-        "Referer": "https://firm.legalone.com.br/",
-        "Referrer-Policy": "strict-origin-when-cross-origin"
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'authenticationmethod': 'ASYMMETRIC_JWT_TOKEN',
+        'authorization': bearer_token,
+        'content-type': 'application/json',
+        'distribution': 'FirmsBrazil',
+        'ocp-apim-subscription-key': 'b1159d90df8d45148b4f5721e2752efc',
+        'sec-ch-ua': '\'Not(A:Brand\';v=\'99\', \'Google Chrome\';v=\'133\', \'Chromium\';v=\'133\'',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '\'Linux\'',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'cross-site',
+        'tenancy': 'mtadvogados',
+        'Referer': 'https://firm.legalone.com.br/',
+        'Referrer-Policy': 'strict-origin-when-cross-origin'
     }
 
     data = {
-        "publicationId": processo.get('id'),
-        "treatStatus": 2,
-        "type": "[Publication] setPublicationTreatedStatus"
+        'publicationId': processo.get('id'),
+        'treatStatus': 2,
+        'type': '[Publication] setPublicationTreatedStatus'
     }
 
     response = requests.post(url, headers=headers, json=data)
@@ -219,7 +223,26 @@ def alterar_processo(bearer_token, processo):
     return None
 
 
-def gerar_excel(processos):
+def salvar_informacoes_no_json(informacoes, arquivo):
+    if os.path.exists(f'{arquivo}.json'):
+        with open(f'{arquivo}.json', 'r', encoding='utf-8') as f:
+            dados = json.load(f)
+    else:
+        dados = []
+
+    dados.append(informacoes)
+
+    with open(f'{arquivo}.json', 'w', encoding='utf-8') as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
+
+
+def deletar_json(arquivo):
+    caminho = f'{arquivo}.json'
+    if os.path.exists(caminho):
+        os.remove(caminho)
+
+
+def gerar_excel(processos, arquivo):
     data_hoje = datetime.today().strftime('%d-%m-%Y')
 
     df = pd.DataFrame(processos)
@@ -230,9 +253,9 @@ def gerar_excel(processos):
         'tribunal': 'Tribunal',
     }, inplace=True)
 
-    df.to_excel(f"processos_{data_hoje}.xlsx", index=False)
+    df.to_excel(f'{arquivo}_{data_hoje}.xlsx', index=False)
 
-    print("Arquivo Excel criado com sucesso!")
+    print('Arquivo Excel criado com sucesso!')
 
 
 executar()
