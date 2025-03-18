@@ -50,31 +50,23 @@ navegador.get("https://pje.tjpb.jus.br/pje/login.seam?loginComCertificado=false"
 
 input("Pressione Enter após realizar o login...")
 
-data_fixa_inicial = "20/03/2023"
-data_fixa_final = "20/03/2023"
+data_fixa_inicial = "17/03/2025"
+data_fixa_final = "17/03/2025"
 valor_acao_fixa = "40000"
 
-iframe = WebDriverWait(navegador, 20).until(
-    EC.presence_of_element_located((By.XPATH, '//*[@id="ssoFrame"]')))
-navegador.switch_to.frame(iframe)
+# iframe = WebDriverWait(navegador, 20).until(
+#     EC.presence_of_element_located((By.XPATH, '//*[@id="ssoFrame"]')))
+# navegador.switch_to.frame(iframe)
+#
+#
+# # time.sleep(1)
+# #
+# # navegador.find_element(By.XPATH, '//*[@id="username"]').send_keys('00658582046')
+# # navegador.find_element(By.XPATH, '//*[@id="password"]').send_keys('Bmv605606!')
+# # navegador.find_element(By.XPATH, '//*[@id="kc-login"]').click()
+#
+# navegador.switch_to.default_content()
 
-
-time.sleep(1)
-
-navegador.find_element(By.XPATH, '//*[@id="username"]').send_keys('00658582046')
-navegador.find_element(By.XPATH, '//*[@id="password"]').send_keys('Bmv605606!')
-navegador.find_element(By.XPATH, '//*[@id="kc-login"]').click()
-
-navegador.switch_to.default_content()
-
-logo = r"""
-
-_  _ _ ____ _ ____ _  _    ___ ____ ____ _  _ _  _ ____ _    ____ ____ _   _ 
-|  | | [__  | |  | |\ |     |  |___ |    |__| |\ | |  | |    |  | | __  \_/  
- \/  | ___] | |__| | \|     |  |___ |___ |  | | \| |__| |___ |__| |__]   |   
-
-    """
-print(logo)
 
 bancos_para_verificar = [
     "UNIAO FEDERAL - FAZENDA NACIONAL",
@@ -94,101 +86,6 @@ WebDriverWait(navegador, 300).until(
 verificado = planilha_dados["Nº do Processo"].any()
 
 if not verificado:
-
-    def atualizar_data_inicial():
-        global data_fixa_inicial
-        data_fixa_inicial = data_entry_inicial.get()
-        janela_data_inicial.destroy()
-
-
-    janela_data_inicial = Tk()
-    janela_data_inicial.title("Digite a data de Inicio")
-
-    largura_janela = 350
-    altura_janela = 100
-
-    largura_tela = janela_data_inicial.winfo_screenwidth()
-    altura_tela = janela_data_inicial.winfo_screenheight()
-
-    posicao_x = int(largura_tela / 2 - largura_janela / 2)
-    posicao_y = int(altura_tela / 2 - altura_janela / 2)
-
-    janela_data_inicial.geometry(f"{largura_janela}x{altura_janela}+{posicao_x}+{posicao_y}")
-
-    data_label_inicial = Label(janela_data_inicial, text="Digite a data de inicio da pesquisa (DD/MM/AAAA):")
-    data_label_inicial.pack()
-
-    data_entry_inicial = Entry(janela_data_inicial)
-    data_entry_inicial.pack()
-
-    ok_button_inicial = Button(janela_data_inicial, text="OK", command=atualizar_data_inicial)
-    ok_button_inicial.pack()
-
-    janela_data_inicial.mainloop()
-
-
-    def atualizar_data_final():
-        global data_fixa_final
-        data_fixa_final = data_entry_final.get()
-        janela_data_final.destroy()
-
-
-    janela_data_final = Tk()
-    janela_data_final.title("Digite a data de Final")
-
-    largura_janela = 350
-    altura_janela = 100
-
-    largura_tela = janela_data_final.winfo_screenwidth()
-    altura_tela = janela_data_final.winfo_screenheight()
-
-    posicao_x = int(largura_tela / 2 - largura_janela / 2)
-    posicao_y = int(altura_tela / 2 - altura_janela / 2)
-
-    janela_data_final.geometry(f"{largura_janela}x{altura_janela}+{posicao_x}+{posicao_y}")
-
-    data_label_final = Label(janela_data_final, text="Digite a data final da pesquisa (DD/MM/AAAA):")
-    data_label_final.pack()
-
-    data_entry_final = Entry(janela_data_final)
-    data_entry_final.pack()
-
-    ok_button_final = Button(janela_data_final, text="OK", command=atualizar_data_final)
-    ok_button_final.pack()
-
-    janela_data_final.mainloop()
-
-
-    def atualiza_valor():
-        global valor_acao_fixa
-        valor_acao_fixa = valor_entry.get()
-        janela_valor.destroy()
-
-
-    janela_valor = Tk()
-    janela_valor.title("Valor da ação")
-
-    largura_janela = 350
-    altura_janela = 100
-
-    largura_tela = janela_valor.winfo_screenwidth()
-    altura_tela = janela_valor.winfo_screenheight()
-
-    posicao_x = int(largura_tela / 2 - largura_janela / 2)
-    posicao_y = int(altura_tela / 2 - altura_janela / 2)
-
-    janela_valor.geometry(f"{largura_janela}x{altura_janela}+{posicao_x}+{posicao_y}")
-
-    valor_label = Label(janela_valor, text="Digite o valor da ação")
-    valor_label.pack()
-
-    valor_entry = Entry(janela_valor)
-    valor_entry.pack()
-
-    valor_button = Button(janela_valor, text="OK", command=atualiza_valor)
-    valor_button.pack()
-
-    janela_valor.mainloop()
 
     # CPF 00658582046
     # SENHA: Vmb605606!
@@ -215,9 +112,9 @@ if not verificado:
 
             print(f'Iniciando busca de {classe} ...')
 
-            time.sleep(4)
-            classe_judicial_inserir = navegador.find_element(By.XPATH, '//*[@id="fPP:j_id235:classeJudicial"]').send_keys(classe)
-
+            time.sleep(2)
+            classe_judicial_inserir = navegador.find_element(By.XPATH, '//input[@alt="Classe judicial"]').send_keys(
+                classe)
 
             data_input_element = navegador.find_element(By.XPATH,
                                                         '//*[@id="fPP:dataAutuacaoDecoration:dataAutuacaoInicioInputDate"]')
@@ -244,7 +141,7 @@ if not verificado:
                 EC.presence_of_element_located((By.CLASS_NAME, "rich-table-cell")))
 
             pagina_atual = 1
-            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id447"]/div[2]/span').text
+            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id451"]/div[2]/span').text
             total_paginas = total_paginas.split(" ")[0]
             total_paginas = math.ceil(int(total_paginas)/20)
 
@@ -258,7 +155,9 @@ if not verificado:
 
             while True:
 
-
+                wait = WebDriverWait(navegador, 15)
+                wait.until(EC.invisibility_of_element_located(
+                    (By.XPATH, '//*[@id="_viewRoot:status.start"]/div/div[2]/div/div')))
 
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")
@@ -295,8 +194,6 @@ if not verificado:
                         planilha_dados.loc[prox_linha, "Cliente"] = povo_passivo
                         planilha_dados.loc[prox_linha, "Tribunal"] = "TJPB"
 
-                        time.sleep(0.5)
-
                         para_planilha()
 
                 navegador.execute_script("window.scrollTo(0, -document.body.scrollHeight);")
@@ -308,8 +205,6 @@ if not verificado:
                 # Executa um script JavaScript para clicar no elemento de paginação
                 script = "arguments[0].click();"
                 navegador.execute_script(script, paginacao_element)
-
-                time.sleep(8)
 
                 if pagina_atual == total_paginas:
                     break
