@@ -15,7 +15,7 @@ PASTA_GERAL_ID = '1BJ1HjguP5Z8QaLkTp85-oJtJqTiwMdJi'
 SHEET_ID = '1hwUdFxkPQkdovOGpmMt8cqXbMnZoMFsFUKGefL8-bOU'
 
 # Configuração de autenticação
-CREDENTIALS_FILE = 'mtadv-449314-47f9a9de429d.json'
+CREDENTIALS_FILE = 'keys/mtadv-449314-47f9a9de429d.json'
 SCOPES = ['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive']
 
 
@@ -53,48 +53,55 @@ def processar_dados(sheet, tipo, registros_executados):
             continue
 
         valor_honorarios = converter_float(row['Valor de honorários iniciais Númeral'])
+        valor_entrada = converter_float(row['Valor da entrada'])
         parcelas = converter_int(row['Parcelas'])
-        valor_parcela = valor_honorarios / parcelas
+
+        if valor_entrada != 0:
+            valor_parcela = (valor_honorarios - valor_entrada) / parcelas
+        else:
+            valor_parcela = valor_honorarios / parcelas
+
+        dados_comuns = {
+            'endereco': row['Endereço'].title(),
+            'numero_endereco': row['Número'],
+            'complemento': row['Complemento'],
+            'bairro': row['Bairro'].title(),
+            'cidade': row['Cidade'].title(),
+            'estado': row['Estado'],
+            'cep': formatar_cep(row['CEP']),
+            'email': row['e-mail'],
+            'processo': row['Processo'],
+            'numero_vara': row['nº Vara'],
+            'competencia': row['Competência'],
+            'ente': str(row['Ente']).upper(),
+            'jurisdicao': row['Jurisdição'].title(),
+            'valor_causa': formatar_valor(row['Valor da causa']),
+            'valor_honorarios_iniciais': formatar_valor(row['Valor de honorários iniciais Númeral']),
+            'valor_honorarios_iniciais_extenso': valor_por_extenso(
+                converter_float(row['Valor de honorários iniciais Númeral'])
+            ),
+            'valor_entrada': formatar_valor(row['Valor da entrada']),
+            'valor_entrada_extenso': valor_por_extenso(row['Valor da entrada']),
+            'parcelas_honorarios_iniciais': row['Parcelas'],
+            'parcelas_honorarios_iniciais_extenso': valor_por_extenso(row['Parcelas'], 'int'),
+            'valor_parcelas': formatar_valor(valor_parcela),
+            'valor_parcelas_extenso': valor_por_extenso(valor_parcela),
+            'data_do_documento': row['Data do documento'],
+        }
 
         if tipo == 'PF':
             processo = {
+                **dados_comuns,
                 'nome': str(row['Nome']).upper(),
                 'nacionalidade': row['Nacionalidade'],
                 'cpf': formatar_cpf(row['CPF']),
-                'endereco': row['Endereço'].title(),
-                'numero_endereco': row['Número'],
-                'complemento': row['Complemento'],
-                'bairro': row['Bairro'].title(),
-                'cidade': row['Cidade'].title(),
-                'estado': row['Estado'],
-                'cep': formatar_cep(row['CEP']),
-                'email': row['e-mail'],
-                'processo': row['Processo'],
-                'numero_vara': row['nº Vara'],
-                'competencia': row['Competência'],
-                'ente': str(row['Ente']).upper(),
-                'jurisdicao': row['Jurisdição'].title(),
-                'valor_causa': formatar_valor(row['Valor da causa']),
-                'valor_honorarios_iniciais': formatar_valor(row['Valor de honorários iniciais Númeral']),
-                'valor_honorarios_iniciais_extenso': valor_por_extenso(
-                    converter_float(row['Valor de honorários iniciais Númeral'])),
-                'parcelas_honorarios_iniciais': row['Parcelas'],
-                'parcelas_honorarios_iniciais_extenso': valor_por_extenso(row['Parcelas'], 'int'),
-                'data_do_documento': row['Data do documento'],
-                'valor_parcelas': formatar_valor(valor_parcela),
-                'valor_parcelas_extenso': valor_por_extenso(valor_parcela),
             }
         else:
             processo = {
+                **dados_comuns,
+                'vara': row['nº Vara'],
                 'nome_da_empresa': str(row['Nome da empresa']).upper(),
                 'cnpj': formatar_cnpj(row['CNPJ']),
-                'endereco_pj': row['Endereço'].title(),
-                'numero_endereco_pj': row['Número'],
-                'complemento_pj': row['Complemento'],
-                'bairro_pj': row['Bairro'].title(),
-                'cidade_pj': row['Cidade'].title(),
-                'estado_pj': row['Estado'],
-                'cep_pj': formatar_cep(row['CEP']),
                 'nome_representante': str(row['Nome do representante']).upper(),
                 'nacionalidade_representante': row['Nacionalidade'],
                 'cpf_representante': formatar_cpf(row['CPF']),
@@ -105,25 +112,9 @@ def processar_dados(sheet, tipo, registros_executados):
                 'cidade_representante': row['Cidade Representante'].title(),
                 'estado_representante': row['Estado Representante'],
                 'cep_representante': formatar_cep(row['CEP Representante']),
-                'email': row['e-mail'],
-                'processo': row['Processo'],
-                'vara': row['nº Vara'],
-                'jurisdicao': row['Jurisdição'].title(),
-                'competencia': row['Competência'],
-                'ente': str(row['Ente']).upper(),
-                'valor_causa': formatar_valor(row['Valor da causa']),
-                'valor_honorarios': formatar_valor(row['Valor de honorários iniciais Númeral']),
-                'valor_honorarios_extenso': valor_por_extenso(
-                    converter_float(row['Valor de honorários iniciais Númeral'])),
-                'parcelas': row['Parcelas'],
-                'parcelas_extenso': valor_por_extenso(row['Parcelas'], 'int'),
-                'valor_parcelas': formatar_valor(valor_parcela),
-                'valor_parcelas_extenso': valor_por_extenso(valor_parcela),
-                'data_do_documento': row['Data do documento']
             }
 
         processos.append(processo)
-
         registros_executados[tipo].append(index + 2)
 
     return processos, registros_executados
@@ -150,6 +141,8 @@ def criar_pasta(drive_service, nome_pasta):
 
 
 def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nome_arquivo):
+    start_index, end_index = None, None
+
     novo_doc = drive_service.files().copy(fileId=modelo_id, body={'name': nome_arquivo}).execute()
     novo_doc_id = novo_doc['id']
     drive_service.files().update(fileId=novo_doc_id, addParents=pasta_id).execute()
@@ -159,6 +152,23 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
         body={'type': 'anyone', 'role': 'writer'},
         fields='id'
     ).execute()
+
+    if 'Contrato' in nome_arquivo:
+        tem_entrada = dados.get('valor_entrada')
+        if 'PF' in nome_arquivo:
+            start_index, end_index = (3882, 4459) if tem_entrada else (4459, 5016)
+        elif 'PJ' in nome_arquivo:
+            start_index, end_index = (4240, 4817) if tem_entrada else (4817, 5373)
+
+        requests = [{
+            'deleteContentRange': {
+                'range': {
+                    'startIndex': start_index,
+                    'endIndex': end_index
+                }
+            }
+        }]
+        docs_service.documents().batchUpdate(documentId=novo_doc_id, body={'requests': requests}).execute()
 
     requests = [{
         'replaceAllText': {
@@ -172,7 +182,6 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
 
 
 def atualizar_planilha(planilhas, registros_executados):
-
     for tipo, sheet in planilhas.items():
         updates = []
         for linha in registros_executados[tipo]:
