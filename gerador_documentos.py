@@ -15,7 +15,7 @@ PASTA_GERAL_ID = '1BJ1HjguP5Z8QaLkTp85-oJtJqTiwMdJi'
 SHEET_ID = '1hwUdFxkPQkdovOGpmMt8cqXbMnZoMFsFUKGefL8-bOU'
 
 # Configuração de autenticação
-CREDENTIALS_FILE = 'keys/mtadv-449314-47f9a9de429d.json'
+CREDENTIALS_FILE = 'mtadv-449314-47f9a9de429d.json'
 SCOPES = ['https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/drive']
 
 
