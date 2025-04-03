@@ -1,8 +1,13 @@
+import locale
+from datetime import datetime
+
 import gspread
 import pandas as pd
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from num2words import num2words
+
+locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
 
 # IDs dos documentos no Google Drive
 DOCUMENTOS = {
@@ -86,7 +91,8 @@ def processar_dados(sheet, tipo, registros_executados):
             'parcelas_honorarios_iniciais_extenso': valor_por_extenso(row['Parcelas'], 'int'),
             'valor_parcelas': formatar_valor(valor_parcela),
             'valor_parcelas_extenso': valor_por_extenso(valor_parcela),
-            'data_do_documento': row['Data do documento'],
+            'data_do_documento': datetime.today().strftime('%d de %B de %Y'),
+            'boleto': ' ou boleto bancário, sempre com vencimento no dia 20.' if row['Boleto'] == 'sim' else '.'
         }
 
         if tipo == 'PF':
@@ -141,7 +147,6 @@ def criar_pasta(drive_service, nome_pasta):
 
 
 def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nome_arquivo):
-    start_index, end_index = None, None
 
     novo_doc = drive_service.files().copy(fileId=modelo_id, body={'name': nome_arquivo}).execute()
     novo_doc_id = novo_doc['id']
@@ -152,23 +157,6 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
         body={'type': 'anyone', 'role': 'writer'},
         fields='id'
     ).execute()
-
-    if 'Contrato' in nome_arquivo:
-        tem_entrada = dados.get('valor_entrada')
-        if 'PF' in nome_arquivo:
-            start_index, end_index = (3882, 4459) if tem_entrada else (4459, 5016)
-        elif 'PJ' in nome_arquivo:
-            start_index, end_index = (4240, 4817) if tem_entrada else (4817, 5373)
-
-        requests = [{
-            'deleteContentRange': {
-                'range': {
-                    'startIndex': start_index,
-                    'endIndex': end_index
-                }
-            }
-        }]
-        docs_service.documents().batchUpdate(documentId=novo_doc_id, body={'requests': requests}).execute()
 
     requests = [{
         'replaceAllText': {
@@ -186,13 +174,13 @@ def atualizar_planilha(planilhas, registros_executados):
         updates = []
         for linha in registros_executados[tipo]:
             if tipo == 'PF':
-                coluna = 'U'
+                coluna = 'V'
                 updates.append({
                     "range": f"{coluna}{linha}",
                     "values": [["Sim"]]
                 })
             elif tipo == 'PJ':
-                coluna = 'AD'
+                coluna = 'AE'
                 updates.append({
                     "range": f"{coluna}{linha}",
                     "values": [["Sim"]]
