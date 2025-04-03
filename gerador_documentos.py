@@ -72,7 +72,7 @@ def processar_dados(sheet, tipo, registros_executados):
             'complemento': row['Complemento'],
             'bairro': row['Bairro'].title(),
             'cidade': row['Cidade'].title(),
-            'estado': row['Estado'],
+            'estado': row['Estado'].upper(),
             'cep': formatar_cep(row['CEP']),
             'email': row['e-mail'],
             'processo': row['Processo'],
@@ -92,7 +92,7 @@ def processar_dados(sheet, tipo, registros_executados):
             'valor_parcelas': formatar_valor(valor_parcela),
             'valor_parcelas_extenso': valor_por_extenso(valor_parcela),
             'data_do_documento': datetime.today().strftime('%d de %B de %Y'),
-            'boleto': ' ou boleto bancário, sempre com vencimento no dia 20.' if row['Boleto'] == 'sim' else '.'
+            'boleto': f' ou boleto bancário, sempre com vencimento no dia {row["Boleto dia vencimento"]}.' if row['Boleto dia vencimento'] else '.'
         }
 
         if tipo == 'PF':
