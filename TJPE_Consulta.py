@@ -39,7 +39,6 @@ def obter_caminho_chromedriver():
     chromedriver_path = result.stdout.strip()
     return chromedriver_path
 
-# Crie uma instância do ChromeDriver configurando o caminho diretamente
 chrome_options.binary_location = obter_caminho_chromedriver()
 navegador = webdriver.Chrome(options=chrome_options)
 
@@ -206,8 +205,8 @@ if not verificado:
             print(f'Iniciando busca de {classe} ...')
 
             time.sleep(4)
-            classe_judicial_inserir = navegador.find_element(By.XPATH, '//*[@id="fPP:j_id244:classeJudicial"]').send_keys(classe)
-
+            classe_judicial_inserir = navegador.find_element(By.XPATH, '//input[@alt="Classe judicial"]').send_keys(
+                classe)
 
             data_input_element = navegador.find_element(By.XPATH,
                                                         '//*[@id="fPP:dataAutuacaoDecoration:dataAutuacaoInicioInputDate"]')
@@ -227,7 +226,6 @@ if not verificado:
 
             botao_pesquisar_element = navegador.find_element(By.ID, 'fPP:searchProcessos')
 
-            # Execute o script para clicar no botão
             navegador.execute_script("arguments[0].click();", botao_pesquisar_element)
 
             WebDriverWait(navegador, 300).until(
@@ -248,7 +246,9 @@ if not verificado:
 
             while True:
 
-
+                wait = WebDriverWait(navegador, 15)
+                wait.until(EC.invisibility_of_element_located(
+                    (By.XPATH, '//*[@id="_viewRoot:status.start"]/div/div[2]/div/div')))
 
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")

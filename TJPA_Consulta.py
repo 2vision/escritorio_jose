@@ -205,8 +205,8 @@ if not verificado:
             print(f'Iniciando busca de {classe} ...')
 
             time.sleep(4)
-            classe_judicial_inserir = navegador.find_element(By.XPATH, '//*[@id="fPP:j_id245:classeJudicial"]').send_keys(classe)
-
+            classe_judicial_inserir = navegador.find_element(By.XPATH, '//input[@alt="Classe judicial"]').send_keys(
+                classe)
 
             data_input_element = navegador.find_element(By.XPATH,
                                                         '//*[@id="fPP:dataAutuacaoDecoration:dataAutuacaoInicioInputDate"]')
@@ -233,7 +233,7 @@ if not verificado:
                 EC.presence_of_element_located((By.CLASS_NAME, "rich-table-cell")))
 
             pagina_atual = 1
-            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id470"]/div[2]/span').text
+            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id469"]/div[2]/span').text
             total_paginas = total_paginas.split(" ")[0]
             total_paginas = math.ceil(int(total_paginas)/20)
 
@@ -247,7 +247,9 @@ if not verificado:
 
             while True:
 
-
+                wait = WebDriverWait(navegador, 15)
+                wait.until(EC.invisibility_of_element_located(
+                    (By.XPATH, '//*[@id="_viewRoot:status.start"]/div/div[2]/div/div')))
 
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")
@@ -298,7 +300,7 @@ if not verificado:
                 script = "arguments[0].click();"
                 navegador.execute_script(script, paginacao_element)
 
-                time.sleep(8)
+                time.sleep(3)
 
                 if pagina_atual == total_paginas:
                     break

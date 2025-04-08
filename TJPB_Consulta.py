@@ -54,20 +54,6 @@ data_fixa_inicial = "17/03/2025"
 data_fixa_final = "17/03/2025"
 valor_acao_fixa = "40000"
 
-# iframe = WebDriverWait(navegador, 20).until(
-#     EC.presence_of_element_located((By.XPATH, '//*[@id="ssoFrame"]')))
-# navegador.switch_to.frame(iframe)
-#
-#
-# # time.sleep(1)
-# #
-# # navegador.find_element(By.XPATH, '//*[@id="username"]').send_keys('00658582046')
-# # navegador.find_element(By.XPATH, '//*[@id="password"]').send_keys('Bmv605606!')
-# # navegador.find_element(By.XPATH, '//*[@id="kc-login"]').click()
-#
-# navegador.switch_to.default_content()
-
-
 bancos_para_verificar = [
     "UNIAO FEDERAL - FAZENDA NACIONAL",
     "CONSELHO REGIONAL DE EDUCACAO FISICA DA 4 REGIAO",
@@ -86,9 +72,6 @@ WebDriverWait(navegador, 300).until(
 verificado = planilha_dados["Nº do Processo"].any()
 
 if not verificado:
-
-    # CPF 00658582046
-    # SENHA: Vmb605606!
 
     try:
         navegador.find_element(By.XPATH, '//*[@id="j_id127"]/span/i').click()
@@ -134,14 +117,13 @@ if not verificado:
 
             botao_pesquisar_element = navegador.find_element(By.ID, 'fPP:searchProcessos')
 
-            # Execute o script para clicar no botão
             navegador.execute_script("arguments[0].click();", botao_pesquisar_element)
 
             WebDriverWait(navegador, 300).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "rich-table-cell")))
 
             pagina_atual = 1
-            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id451"]/div[2]/span').text
+            total_paginas = navegador.find_element(By.XPATH, '//*[@id="fPP:processosTable:j_id464"]/div[2]/span').text
             total_paginas = total_paginas.split(" ")[0]
             total_paginas = math.ceil(int(total_paginas)/20)
 
@@ -293,12 +275,10 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
 
             botao_pesquisar_element = navegador.find_element(By.ID, 'fPP:searchProcessos')
 
-            # Execute o script para clicar no botão
             navegador.execute_script("arguments[0].click();", botao_pesquisar_element)
 
             time.sleep(3)
 
-            # Aguarde até que o elemento seja visível na página
             wait = WebDriverWait(navegador, 10)
             element = wait.until(EC.visibility_of_element_located((By.CLASS_NAME, 'btn-link.btn-condensed')))
 
@@ -321,10 +301,8 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
             soup = BeautifulSoup(html, 'html.parser')
 
             try:
-                # Encontre o elemento <dt> com o texto 'Valor da causa'
                 element_dt = soup.find('dt', string=re.compile(r'Valor da causa', re.IGNORECASE))
 
-                # Se o elemento <dt> for encontrado, pegue o próximo elemento <dd> que contém o valor
                 if element_dt:
                     value_element = element_dt.find_next('dd')
                     valor_da_causa = value_element.get_text(strip=True)
@@ -351,10 +329,8 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
                 planilha_dados.loc[indice_linha2, "CPF/CNPJ"] = "CPF não encontrado"
 
             try:
-                # Encontre o elemento <dt> com o texto 'Assunto'
                 element_dt_assunto = soup.find('dt', string=re.compile(r'Assunto', re.IGNORECASE))
 
-                # Se o elemento <dt> for encontrado, pegue o próximo elemento <dd> que contém o assunto
                 if element_dt_assunto:
                     assunto_element = element_dt_assunto.find_next('dd')
                     assunto = assunto_element.get_text(strip=True).replace("<br>", " / ")
@@ -363,7 +339,6 @@ for indice_linha2, linha2 in planilha_dados.iterrows():
                 planilha_dados.loc[indice_linha2, "Assunto"] = "Assunto não encontrado"
 
             try:
-                # Encontre o elemento <dt> com o texto 'Órgão Julgador'
                 element_dt_orgao = soup.find('dt', string=re.compile(r'Órgão Julgador', re.IGNORECASE))
 
                 # Se o elemento <dt> for encontrado, pegue o próximo elemento <dd> que contém o órgão julgador
