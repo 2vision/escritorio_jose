@@ -92,7 +92,7 @@ def processar_dados(sheet, tipo, registros_executados):
             'valor_parcelas': formatar_valor(valor_parcela),
             'valor_parcelas_extenso': valor_por_extenso(valor_parcela),
             'data_do_documento': datetime.today().strftime('%d de %B de %Y'),
-            'boleto': f' ou boleto bancário, sempre com vencimento no dia {row["Boleto dia vencimento"]}.' if row['Boleto dia vencimento'] else '.'
+            'dia_do_boleto': row["Boleto dia vencimento"]
         }
 
         if tipo == 'PF':
@@ -157,6 +157,23 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
         body={'type': 'anyone', 'role': 'writer'},
         fields='id'
     ).execute()
+
+    if 'Contrato' in nome_arquivo:
+        tem_boleto = dados.get('dia_do_boleto')
+        if 'PF' in nome_arquivo:
+            start_index, end_index = (4433, 5170) if tem_boleto else (3885, 4433)
+        elif 'PJ' in nome_arquivo:
+            start_index, end_index = (4791, 5528) if tem_boleto else (4243, 4791)
+
+        requests = [{
+            'deleteContentRange': {
+                'range': {
+                    'startIndex': start_index,
+                    'endIndex': end_index
+                }
+            }
+        }]
+        docs_service.documents().batchUpdate(documentId=novo_doc_id, body={'requests': requests}).execute()
 
     requests = [{
         'replaceAllText': {
