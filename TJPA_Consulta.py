@@ -48,21 +48,12 @@ termos_de_pesquisa = ["Execução Fiscal"]
 
 navegador.get("https://pje.tjpa.jus.br/pje/login.seam?loginComCertificado=false")
 
-input("Pressione Enter após realizar o login...")
+#input("Pressione Enter após realizar o login...")
 
-data_fixa_inicial = "20/03/2023"
-data_fixa_final = "20/03/2023"
-valor_acao_fixa = "40000"
+data_fixa_inicial = "09/03/2025"
+data_fixa_final = "13/04/2025"
+valor_acao_fixa = "50000"
 
-
-logo = r"""
-
-_  _ _ ____ _ ____ _  _    ___ ____ ____ _  _ _  _ ____ _    ____ ____ _   _ 
-|  | | [__  | |  | |\ |     |  |___ |    |__| |\ | |  | |    |  | | __  \_/  
- \/  | ___] | |__| | \|     |  |___ |___ |  | | \| |__| |___ |__| |__]   |   
-
-    """
-print(logo)
 
 bancos_para_verificar = [
     "UNIAO FEDERAL - FAZENDA NACIONAL",
