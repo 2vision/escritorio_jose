@@ -492,7 +492,7 @@ def consulta_movimentos(cookies, numero_expediente, processo):
     for mov in movimentos:
 
         if mov.get('data') == data_planilha and mov.get('descricao_resumida') in MOVIMENTOS:
-            return mov.get('descricao_resumida'), areas_judiciais
+            return mov.get('descricao_resumida')
 
     return 'Movimento não encontrado'
 
