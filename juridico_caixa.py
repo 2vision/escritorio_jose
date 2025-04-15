@@ -436,13 +436,15 @@ def consulta_numero_expediente(cookies, processo):
 
     texto_completo = soup.get_text()
 
-    # Encontra todos os números de expediente
     expedientes = re.findall(r'\d{2}\.\d{3}\.\d{5}/\d{4}(?:-\d{3})?', texto_completo)
 
-    # Remove duplicatas, se quiser
+    areas_judiciais_raw = re.findall(
+        r'<td class="center">(.*?)</td>\s*<td class="center">(.*?)</td>\s*<td class="center">(.*?)</td>', response.text)
+    areas_judiciais = [fix_text(re.sub(r'<.*?>', '', area[2]).strip()) for area in areas_judiciais_raw]
+
     expedientes = list(set(expedientes))
 
-    return expedientes
+    return expedientes, areas_judiciais
 
 
 def consulta_movimentos(cookies, numero_expediente, processo):
@@ -484,13 +486,13 @@ def consulta_movimentos(cookies, numero_expediente, processo):
             'codigo_movimento': fix_text(codigo.text.strip()) if codigo else '',
             'data': data_formatada,
             'descricao_resumida': fix_text(resumo.text.strip()) if resumo else '',
-            'descricao_completa': fix_text(texto_rtf.get_text(separator=' ', strip=True)) if texto_rtf else ''
+            'descricao_completa': fix_text(texto_rtf.get_text(separator=' ', strip=True)) if texto_rtf else '',
         })
 
     for mov in movimentos:
 
         if mov.get('data') == data_planilha and mov.get('descricao_resumida') in MOVIMENTOS:
-            return mov.get('descricao_resumida')
+            return mov.get('descricao_resumida'), areas_judiciais
 
     return 'Movimento não encontrado'
 
@@ -524,7 +526,7 @@ def salvar_informacoes_no_excel():
 processos = dados_planilha()
 cookies = pegar_cookies()
 for processo in processos:
-    numeros_expedientes = consulta_numero_expediente(cookies, processo)
+    numeros_expedientes, areas_judiciais  = consulta_numero_expediente(cookies, processo)
     todos_movimentos = []
     for numero_expediente in numeros_expedientes:
         movimento = consulta_movimentos(cookies, numero_expediente, processo)
@@ -533,13 +535,16 @@ for processo in processos:
     movimento_principal = 'Movimento não encontrado'
 
     for movimento in todos_movimentos:
+
         if movimento != 'Movimento não encontrado':
             movimento_principal = movimento
             break
 
     processo_atualizado = {
         **processo,
-        'movimento': movimento_principal
+        'movimento': movimento_principal,
+        'numero_expediente': numero_expediente,
+        'area_judicial': areas_judiciais
     }
     salvar_informacoes_no_json(processo_atualizado, NOME_ARQUIVO_PARA_SALVAR)
 
