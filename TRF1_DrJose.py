@@ -40,14 +40,12 @@ navegador = webdriver.Chrome(options=chrome_options)
 
 navegador.maximize_window()
 
-termos_de_pesquisa = ["Execução Fiscal"]
-
 navegador.get("https://pje1g.trf1.jus.br/pje/login.seam?loginComCertificado=false")
 
 input("Pressione Enter após realizar o login...")
 
-data_fixa_inicial = "20/03/2023"
-data_fixa_final = "20/03/2023"
+data_fixa_inicial = "20/03/2025"
+data_fixa_final = "20/03/2025"
 valor_acao_fixa = "10.000,00"
 
 
@@ -60,6 +58,8 @@ _  _ _ ____ _ ____ _  _    ___ ____ ____ _  _ _  _ ____ _    ____ ____ _   _
     """
 print(logo)
 
+termos_de_pesquisa = ["Execução Fiscal", "Execução de titulo extrajudicial", "Busca e apreensão"]
+
 bancos_para_verificar = [
     "UNIAO FEDERAL - FAZENDA NACIONAL",
     "CONSELHO REGIONAL DE EDUCACAO FISICA DA 4 REGIAO",
@@ -69,7 +69,84 @@ bancos_para_verificar = [
     "FEDERAL",
     "FAZENDA",
     "MUNICIPIO",
-    "ESTADO"
+    "ESTADO",
+    "BANCO INVESTCRED UNIBANCO S.A.",
+    "BANCO ITAUCARD S.A.",
+    "BANCO ITAÚ BBA S.A.",
+    "BANCO ITAÚ CONSIGNADO S.A.",
+    "BANCO ITAÚ VEÍCULOS S.A.",
+    "FINANCEIRA ITAÚ CBD S.A. CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
+    "HIPERCARD BANCO MÚLTIPLO S.A.",
+    "ITAÚ UNIBANCO S.A.",
+    "LUIZACRED S.A. SOCIEDADE DE CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
+    "REDECARD INSTITUIÇÃO DE PAGAMENTO S.A.",
+    "NEON FINANCEIRA - CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
+    "NEON PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+    "BANCO BV S.A.",
+    "MERCADO CRÉDITO SOCIEDADE DE CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
+    "MERCADO PAGO INSTITUIÇÃO DE PAGAMENTO LTDA.",
+    "NU FINANCEIRA S.A. - SOCIEDADE DE CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
+    "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+    "BANCO ORIGINAL S.A.",
+    "PICPAY BANK - BANCO MÚLTIPLO S.A",
+    "AME DIGITAL BRASIL INSTITUICAO DE PAGAMENTO LTDA",
+    "PARATI - CREDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
+    "BANCO BTG PACTUAL S.A.",
+    "BANCO PAN S.A.",
+    "PAN FINANCEIRA S.A. - CRÉDITO, FINANCIAMENTO E INVESTIMENTOS",
+    "BANCO BRADESCARD S.A.",
+    "BANCO BRADESCO BBI S.A.",
+    "BANCO BRADESCO BERJ S.A.",
+    "BANCO BRADESCO FINANCIAMENTOS S.A.",
+    "BANCO BRADESCO S.A.",
+    "BANCO DIGIO S.A.",
+    "BANCO LOSANGO S.A. - BANCO MÚLTIPLO",
+    "BITZ INSTITUICAO DE PAGAMENTO S.A.",
+    "KIRTON BANK S.A. - BANCO MÚLTIPLO",
+    "BANCO INTER S.A.",
+    "BANCO C6 CONSIGNADO S.A.",
+    "BANCO C6 S.A.",
+    "BANCOSEGURO S.A.",
+    "PAGSEGURO INTERNET INSTITUIÇÃO DE PAGAMENTO S.A.",
+    "WIRECARD BRAZIL INSTITUIÇÃO DE PAGAMENTO S.A.",
+    "BANCO ITAUBANK S.A.",
+    "ITAÚ UNIBANCO HOLDING S.A.",
+    "AYMORÉ CRÉDITO, FINANCIAMENTO E INVESTIMENTO S.A.",
+    "BANCO HYUNDAI CAPITAL BRASIL S.A.",
+    "BANCO PSA FINANCE BRASIL S.A.",
+    "BANCO RCI BRASIL S.A.",
+    "BANCO SANTANDER (BRASIL) S.A.",
+    "BEN BENEFÍCIOS E SERVIÇOS INSTITUIÇÃO DE PAGAMENTO S.A.",
+    "GETNET ADQUIRÊNCIA E SERVIÇOS PARA MEIOS DE PAGAMENTO S.A. INSTITUIÇÃO DE PAGAMENTO",
+    "SUPERDIGITAL INSTITUIÇÃO DE PAGAMENTO S.A.",
+    "BANCO INBURSA S.A.",
+    "BANCO MASTER DE INVESTIMENTO S.A.",
+    "BANCO DIGIMAIS S.A.",
+    "AGIBANK FINANCEIRA S.A. - CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
+    "BANCO AGIBANK S.A.",
+    "BANCO DAYCOVAL S.A.",
+    "DAYCOVAL LEASING - BANCO MÚLTIPLO S.A.",
+    "ADIQ INSTITUIÇÃO DE PAGAMENTO S.A.",
+    "BANCO BS2 S.A.",
+    "BANCO XP S.A",
+    "BANCO BMG S.A.",
+    "BANCO CIFRA S.A.",
+    "BCV - BANCO DE CRÉDITO E VAREJO S.A.",
+    "BANCO SOFISA S.A.",
+    "SOFISA S.A. CRÉDITO, FINANCIAMENTO E INVESTIMENTO",
+    "BANCO MERCANTIL DO BRASIL S.A.",
+    "BANCO J. SAFRA S.A.",
+    "BANCO SAFRA S.A.",
+    "BANCO CREFISA S.A.",
+    "BANCO",
+    "AYMORÉ",
+    "AGIBANK",
+    "INSTITUIÇÃO",
+    "CRÉDITO",
+    "CREDITO",
+    "COOPERATIVA",
+    "COPERATIVA",
+    "SEGUROS"
 ]
 
 WebDriverWait(navegador, 300).until(
@@ -210,13 +287,12 @@ if not verificado:
     for classe in termos_de_pesquisa:
         try:
 
-            time.sleep(6)
+            time.sleep(3)
 
             navegador.refresh()
 
             print(f'Iniciando busca de {classe} ...')
 
-            time.sleep(4)
             classe_judicial_inserir = navegador.find_element(By.XPATH, '//input[@alt="Classe judicial"]').send_keys(
                 classe)
 
@@ -267,7 +343,8 @@ if not verificado:
 
             while True:
 
-                time.sleep(1)
+                wait = WebDriverWait(navegador, 15)
+                wait.until(EC.invisibility_of_element_located((By.XPATH, '//*[@id="_viewRoot:status.start"]/div/div[2]/div/div')))
 
                 WebDriverWait(navegador, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//*[@id='fPP:processosTable:tb']")))
@@ -275,7 +352,6 @@ if not verificado:
                 tabela_bancos = navegador.find_element(By.XPATH, "//*[@id='fPP:processosTable:tb']")
                 colunas = tabela_bancos.find_elements(By.XPATH, ".//tr")
 
-                time.sleep(1)
                 for processos in colunas:
                     td_elements2 = processos.find_elements(By.TAG_NAME, "td")
                     numero_processo_banco = td_elements2[1].get_attribute("innerText")
@@ -299,8 +375,6 @@ if not verificado:
                     planilha_dados.loc[prox_linha, "Cliente"] = povo_passivo
                     planilha_dados.loc[prox_linha, "Tribunal"] = "TRF1"
 
-                    time.sleep(0.5)
-
                     para_planilha()
 
                 navegador.execute_script("window.scrollTo(0, -document.body.scrollHeight);")
@@ -312,8 +386,6 @@ if not verificado:
                 # Executa um script JavaScript para clicar no elemento de paginação
                 script = "arguments[0].click();"
                 navegador.execute_script(script, paginacao_element)
-
-                time.sleep(2)
 
                 if pagina_atual == total_paginas:
                     break
