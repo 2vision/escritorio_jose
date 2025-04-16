@@ -13,6 +13,8 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from ftfy import fix_text
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 
 NOME_ARQUIVO_PARA_SALVAR = 'Processos Verificados'
@@ -536,10 +538,10 @@ def salvar_informacoes_no_excel():
     print(f'o arquivo {NOME_ARQUIVO_PARA_SALVAR}.xlsx foi gerado com sucesso!')
 
 
-processos = dados_planilha()
-cookies = pegar_cookies()
-for processo in processos:
-    numeros_expedientes, areas_judiciais  = consulta_numero_expediente(cookies, processo)
+
+def processar_processo(cookies, processo):
+    numeros_expedientes, areas_judiciais = consulta_numero_expediente(cookies, processo)
+
     todos_movimentos_atuais = []
     todos_movimentos_dia_seguinte = []
 
@@ -564,10 +566,29 @@ for processo in processos:
     processo_atualizado = {
         **processo,
         'movimento': movimento_principal,
-        'numero_expediente': numero_expediente,
-        'area_judicial': areas_judiciais[0],
+        'numero_expediente': numeros_expedientes[0] if numeros_expedientes else '',
+        'area_judicial': areas_judiciais[0] if areas_judiciais else '',
         'movimento_dia_seguinte': movimento_principal_dia_seguinte
     }
-    salvar_informacoes_no_json(processo_atualizado, NOME_ARQUIVO_PARA_SALVAR)
+
+    with lock:
+        salvar_informacoes_no_json(processo_atualizado, NOME_ARQUIVO_PARA_SALVAR)
+
+
+lock = threading.Lock()
+processos = dados_planilha()
+cookies = pegar_cookies()
+
+with ThreadPoolExecutor(max_workers=5) as executor:
+    future_to_processo = {
+        executor.submit(processar_processo, cookies, processo): processo for processo in processos
+    }
+
+    for future in as_completed(future_to_processo):
+        processo = future_to_processo[future]
+        try:
+            future.result()
+        except Exception as e:
+            print(f'Erro ao processar processo {processo}: {e}')
 
 salvar_informacoes_no_excel()
