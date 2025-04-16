@@ -2,7 +2,6 @@ import json
 import os
 import re
 import warnings
-from datetime import datetime
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -13,6 +12,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from ftfy import fix_text
+from datetime import datetime, timedelta
+
 
 NOME_ARQUIVO_PARA_SALVAR = 'Processos Verificados'
 MOVIMENTOS = [
@@ -450,6 +451,7 @@ def consulta_numero_expediente(cookies, processo):
 def consulta_movimentos(cookies, numero_expediente, processo):
     url = f"https://www.juridico.caixa.gov.br/?pg=Expediente_movimentos&expediente={numero_expediente}&p_servidor=BDD7877WN001.corp.caixa.gov.br"
     data_planilha = datetime.strptime(processo.get('data_publicacao'), "%d/%m/%Y").date()
+    data_dia_seguinte = data_planilha + timedelta(days=1)
 
     headers = {
         'accept': 'text/html, */*; q=0.01',
@@ -478,7 +480,9 @@ def consulta_movimentos(cookies, numero_expediente, processo):
         formatos = ["%d/%m/%Y %H:%M:%S", "%d/%m/%Y"]
         for fmt in formatos:
             try:
+
                 data_formatada = datetime.strptime(data.text.strip(), fmt).date()
+
             except ValueError:
                 continue
 
@@ -489,12 +493,21 @@ def consulta_movimentos(cookies, numero_expediente, processo):
             'descricao_completa': fix_text(texto_rtf.get_text(separator=' ', strip=True)) if texto_rtf else '',
         })
 
+    movimento_atual = None
+    movimento_dia_seguinte = None
+
     for mov in movimentos:
 
         if mov.get('data') == data_planilha and mov.get('descricao_resumida') in MOVIMENTOS:
-            return mov.get('descricao_resumida')
+            movimento_atual = mov.get('descricao_resumida')
 
-    return 'Movimento não encontrado'
+        if mov.get('data') == data_dia_seguinte and mov.get('descricao_resumida') in MOVIMENTOS:
+            movimento_dia_seguinte = mov.get('descricao_resumida')
+
+    movimento_atual = movimento_atual or 'Movimento não encontrado'
+    movimento_dia_seguinte = movimento_dia_seguinte or 'Movimento não encontrado'
+
+    return movimento_atual, movimento_dia_seguinte
 
 
 def salvar_informacoes_no_json(informacoes, arquivo):
@@ -527,24 +540,33 @@ processos = dados_planilha()
 cookies = pegar_cookies()
 for processo in processos:
     numeros_expedientes, areas_judiciais  = consulta_numero_expediente(cookies, processo)
-    todos_movimentos = []
+    todos_movimentos_atuais = []
+    todos_movimentos_dia_seguinte = []
+
     for numero_expediente in numeros_expedientes:
-        movimento = consulta_movimentos(cookies, numero_expediente, processo)
-        todos_movimentos.append(movimento)
+        movimento_atual, movimento_dia_seguinte = consulta_movimentos(cookies, numero_expediente, processo)
+        todos_movimentos_atuais.append(movimento_atual)
+        todos_movimentos_dia_seguinte.append(movimento_dia_seguinte)
 
     movimento_principal = 'Movimento não encontrado'
+    movimento_principal_dia_seguinte = ''
 
-    for movimento in todos_movimentos:
-
+    for movimento in todos_movimentos_atuais:
         if movimento != 'Movimento não encontrado':
             movimento_principal = movimento
+            break
+
+    for movimento in todos_movimentos_dia_seguinte:
+        if movimento != 'Movimento não encontrado':
+            movimento_principal_dia_seguinte = movimento
             break
 
     processo_atualizado = {
         **processo,
         'movimento': movimento_principal,
         'numero_expediente': numero_expediente,
-        'area_judicial': areas_judiciais
+        'area_judicial': areas_judiciais[0],
+        'movimento_dia_seguinte': movimento_principal_dia_seguinte
     }
     salvar_informacoes_no_json(processo_atualizado, NOME_ARQUIVO_PARA_SALVAR)
 
