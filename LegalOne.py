@@ -1,14 +1,17 @@
-import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from seleniumwire import webdriver
+from selenium.webdriver.support import expected_conditions as EC
+import json
+
 
 LOGIN = 'raissa.zp'
 SENHA = 'Raissa1001'
@@ -32,7 +35,7 @@ def executar():
         print('Começou a dar baixa nos processos!')
         total_processos = len(processos)
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_processo = {
                 executor.submit(alterar_processo, bearer_token, processo): processo for processo in processos
             }
@@ -60,10 +63,18 @@ def executar():
 def acessar_legal_one():
     bearer_token = None
 
-    options = webdriver.ChromeOptions()
-    options.add_argument('--start-maximized')
+    chrome_options = Options()
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument('log-level=3')
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
 
-    navegador = webdriver.Chrome(options=options)
+    # Ativa os logs de rede do Chrome
+    chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+
+    service = Service()  # Se precisar, passe o caminho do driver aqui
+    navegador = webdriver.Chrome(service=service, options=chrome_options)
     wait = WebDriverWait(navegador, 10)
 
     try:
@@ -74,9 +85,19 @@ def acessar_legal_one():
         navegador.find_element(By.ID, 'Password').send_keys(SENHA)
         navegador.find_element(By.ID, 'SignIn').click()
 
-        for request in navegador.requests:
-            if 'https://legalone-prod-webapp-eastus2-api.azure-api.net' in request.url:
-                bearer_token = request.headers.get('authorization')
+        logs = navegador.get_log("performance")
+
+        for log in logs:
+            message = json.loads(log["message"])["message"]
+            if message["method"] == "Network.requestWillBeSent":
+                request_url = message["params"]["request"]["url"]
+                if "https://legalone-prod-webapp-eastus2-api.azure-api.net" in request_url:
+                    headers = message["params"]["request"].get("headers", {})
+                    bearer_token = headers.get("Authorization")
+
+                    if bearer_token:
+                        print("🔑 Bearer Token encontrado!")
+                        break
 
     finally:
         navegador.quit()
@@ -131,7 +152,7 @@ def lista_de_processos(bearer_token, publication_type, lista_ids):
             'filterFontTypeOption': 0,
             'filterSourceOption': [],
             'filterResponsibleAreaOption': [],
-            'filterResponsibleUserOption': [12204],
+            'filterResponsibleUserOption': [12204, 9256],
             'filterRelationshipFilterType': 0,
             'filterRelationshipFilterLawsuitOption': [],
             'filterRelationshipFilterContactOption': [],
