@@ -158,12 +158,18 @@ def gerar_doc_drive(drive_service, docs_service, modelo_id, dados, pasta_id, nom
         fields='id'
     ).execute()
 
+    document = docs_service.documents().get(documentId=novo_doc_id).execute()
+
+    for elemento in document.get('body').get('content'):
+        if 'paragraph' in elemento:
+            paragrafos = elemento['paragraph']
+
     if 'Contrato' in nome_arquivo:
         tem_boleto = dados.get('dia_do_boleto')
         if 'PF' in nome_arquivo:
-            start_index, end_index = (4433, 5170) if tem_boleto else (3885, 4433)
+            start_index, end_index = (4523, 5173) if tem_boleto else (3858, 4523)
         elif 'PJ' in nome_arquivo:
-            start_index, end_index = (4791, 5528) if tem_boleto else (4243, 4791)
+            start_index, end_index = (4881, 5531) if tem_boleto else (4216, 4881)
 
         requests = [{
             'deleteContentRange': {
