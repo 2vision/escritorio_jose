@@ -24,8 +24,7 @@ def executar():
     with ThreadPoolExecutor(max_workers=1) as executor:
         executor.map(processar_processo, processos)
 
-    salvar_informacoes_no_excel()
-
+    salvar_informacoes_no_excel_2()
 
 def processar_processo(processo):
     try:
@@ -49,8 +48,7 @@ def processar_processo(processo):
 
 
 def capturar_processos_sheets():
-    processos_consulta_andamento = acessar_sheets('Procesos_Andamentos')
-    df = pd.DataFrame(processos_consulta_andamento.get_all_records())
+    df = pd.read_excel("processos_jusbr.xlsx", sheet_name="Plan1")
     processos = []
 
     for index, linha in df.iterrows():
@@ -67,7 +65,7 @@ def capturar_processos_sheets():
 
 def api_jusbr(processo, token):
     processo_limpo = processo.replace('.', '').replace('-', '')
-    processo_limpo = '00000011220174036000'
+    # processo_limpo = '00000011220174036000'
     url_base = f'https://portaldeservicos.pdpj.jus.br/api/v2/processos/{processo_limpo}'
     headers = {'Authorization': f'Bearer {token}'}
 
@@ -176,41 +174,21 @@ def salvar_informacoes_no_json(informacoes, arquivo):
         json.dump(dados, f, indent=4, ensure_ascii=False)
 
 
-def salvar_informacoes_no_excel():
-    aba = acessar_sheets('TESTE')
+def salvar_informacoes_no_excel_2():
     with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r', encoding='utf-8') as f:
         dados = json.load(f)
 
     dados_flat = [registro for grupo in dados for registro in grupo]
     df = pd.DataFrame(dados_flat)
+    df.to_excel(f'{NOME_ARQUIVO_PARA_SALVAR}.xlsx', index=False, engine='openpyxl', sheet_name="Processos")
 
-    ultima_linha_preenchida = len(aba.get_all_values())
-    linha_inicial = ultima_linha_preenchida + 1
-
-    range_inicial = f'A{linha_inicial}'
-    aba.update(range_inicial, df.values.tolist())
-
-    if os.path.exists(f'{NOME_ARQUIVO_PARA_SALVAR}.json'):
-        os.remove(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
-
-    print(f'o arquivo {NOME_ARQUIVO_PARA_SALVAR}.xlsx foi gerado com sucesso!')
-
-    aba = acessar_sheets('Procesos_Andamentos')
     with open('movimentos.json', 'r', encoding='utf-8') as f:
         dados = json.load(f)
 
-    df = pd.DataFrame(dados)
-    aba.update('A2', df.values.tolist())
+    df2 = pd.DataFrame(dados)
+    df2.to_excel(f'movimentos.xlsx', index=False, engine='openpyxl', sheet_name="Processos")
 
-    if os.path.exists('movimentos.json'):
-        os.remove('movimentos.json')
-
-
-def acessar_sheets(aba):
-    url_apatir_do_d = '115KmMpyVPooJoKgmDAR1-iK-SDh-TyF7mXPUZD7oWZ8'
-    google_cloud = gspread.service_account(filename='mtadv-449314-47f9a9de429d.json')
-    sheet = google_cloud.open_by_key(url_apatir_do_d)
-    return sheet.worksheet(aba)
+    print(f'o arquivo {NOME_ARQUIVO_PARA_SALVAR}.xlsx foi gerado com sucesso!')
 
 
 def datetime_datahora(data, format='%Y-%m-%dT%H:%M:%S'):
@@ -238,4 +216,6 @@ SENTENCAS_SECUNDARIAS = [
     "Julgamento "
 ]
 
+
+# salvar_informacoes_no_excel_2()
 executar()
