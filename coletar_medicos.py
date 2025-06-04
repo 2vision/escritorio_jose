@@ -1,7 +1,12 @@
+import json
+import os
+
+import pandas as pd
 import requests
 from anticaptchaofficial.recaptchav2proxyless import recaptchaV2Proxyless
 from concurrent.futures import ThreadPoolExecutor
 
+NOME_ARQUIVO_PARA_SALVAR = 'MEDICOS SP'
 API_KEY_ANTICAPTCHA = "7d64a894e2aa8e3c3cb916d76772fb57"
 SITE_URL = "https://guiamedico.cremesp.org.br/"
 SITE_KEY = "6LfafawZAAAAABQBiis7_2dboz4yyfGtuQjJBObK"
@@ -70,11 +75,6 @@ def coletar_todos_dados():
     tamanho_pagina = primeira_resposta.get("size", 50)
 
     print(f"Total de páginas: {total_paginas}")
-
-    todos_dados = []
-    todos_dados.extend(primeira_resposta.get("content", []))
-
-    # Prepara lista de argumentos para passar para executor.map
     lista_args = [(pagina * tamanho_pagina, tamanho_pagina) for pagina in range(1, total_paginas)]
 
     with ThreadPoolExecutor(max_workers=1) as executor:
@@ -82,10 +82,37 @@ def coletar_todos_dados():
 
     for resultado in resultados:
         if resultado and "content" in resultado:
-            todos_dados.extend(resultado["content"])
+            todos_dados = resultado["content"]
+            salvar_informacoes_no_json(todos_dados, 'todos_medicos')
 
-    return todos_dados
 
-if __name__ == "__main__":
-    dados = coletar_todos_dados()
-    print(f"Total de registros coletados: {len(dados)}")
+
+
+def salvar_informacoes_no_json(informacoes, arquivo):
+    if os.path.exists(f'{arquivo}.json'):
+        with open(f'{arquivo}.json', 'r', encoding='utf-8') as f:
+            dados = json.load(f)
+    else:
+        dados = []
+
+    dados.append(informacoes)
+
+    with open(f'{arquivo}.json', 'w', encoding='utf-8') as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
+
+
+def salvar_informacoes_no_excel():
+    with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r', encoding='utf-8') as f:
+        dados = json.load(f)
+
+    df = pd.DataFrame(dados)
+    df.to_excel(f'{NOME_ARQUIVO_PARA_SALVAR}.xlsx', index=False, engine='openpyxl', sheet_name="Processos")
+
+    if os.path.exists(f'{NOME_ARQUIVO_PARA_SALVAR}.json'):
+        os.remove(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
+
+    print(f'o arquivo {NOME_ARQUIVO_PARA_SALVAR}.xlsx foi gerado com sucesso!')
+
+
+dados = coletar_todos_dados()
+print(f"Total de registros coletados: {len(dados)}")
