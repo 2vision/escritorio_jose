@@ -86,8 +86,6 @@ def coletar_todos_dados():
             salvar_informacoes_no_json(todos_dados, 'todos_medicos')
 
 
-
-
 def salvar_informacoes_no_json(informacoes, arquivo):
     if os.path.exists(f'{arquivo}.json'):
         with open(f'{arquivo}.json', 'r', encoding='utf-8') as f:
