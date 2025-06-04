@@ -80,10 +80,10 @@ def coletar_todos_dados():
     with ThreadPoolExecutor(max_workers=1) as executor:
         resultados = executor.map(fazer_requisicao_pagina, lista_args)
 
-    for resultado in resultados:
-        if resultado and "content" in resultado:
-            todos_dados = resultado["content"]
-            salvar_informacoes_no_json(todos_dados, 'todos_medicos')
+        for resultado in resultados:
+            if resultado and "content" in resultado:
+                todos_dados = resultado["content"]
+                salvar_informacoes_no_json(todos_dados, 'todos_medicos')
 
 
 def salvar_informacoes_no_json(informacoes, arquivo):
