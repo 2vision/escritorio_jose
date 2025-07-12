@@ -184,7 +184,7 @@ class ConsultaJusbrApp:
             pady=(10, 20))
         tk.Label(root, text="Data Inicial (dd/mm/aaaa):").pack(pady=5)
         tk.Entry(root, textvariable=self.data_inicial).pack()
-        tk.Button(root, text="Selecionar Excel com Nº do Processo", command=self.selecionar_excel).pack(pady=5)
+        tk.Button(root, text="Selecionar o Excel", command=self.selecionar_excel).pack(pady=5)
 
         self.iniciar_button = tk.Button(root, text="Iniciar Consulta", command=self.iniciar_consulta)
         self.iniciar_button.pack(pady=10)
@@ -257,7 +257,12 @@ class ConsultaJusbrApp:
 
     def salvar_novos_processos(self):
         try:
-            with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r', encoding='utf-8') as f:
+            json_path = f'{NOME_ARQUIVO_PARA_SALVAR}.json'
+            if not os.path.exists(json_path):
+                self.log("📭 Nenhum novo processo encontrado. Nada a salvar.")
+                return
+
+            with open(json_path, 'r', encoding='utf-8') as f:
                 novos_dados = json.load(f)
             df_novos = pd.DataFrame(novos_dados)
 
@@ -271,7 +276,7 @@ class ConsultaJusbrApp:
                 df_novos.to_excel(novo_arquivo, index=False, engine='openpyxl')
                 self.log(f"📄 Planilha nova criada: {novo_arquivo}")
 
-            os.remove(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
+            os.remove(json_path)
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao salvar na planilha: {e}")
 
