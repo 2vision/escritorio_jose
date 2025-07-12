@@ -5,8 +5,7 @@ import threading
 import time
 import tkinter as tk
 from datetime import datetime
-from threading import Thread
-from tkinter import messagebox, scrolledtext
+from tkinter import filedialog, messagebox, scrolledtext
 
 import pandas as pd
 import requests
@@ -16,7 +15,7 @@ from selenium.webdriver.chrome.service import Service
 
 # === CONFIGURAÇÕES ===
 NOME_ARQUIVO_PARA_SALVAR = 'Consulta JUSBR'
-CNPJS = ["045.708.084-17", "44.177.742/0001-62"]
+CNPJS = ["44.177.742/0001-62", "045.708.084-17"]
 
 
 def api_jusbr(bearer_code, cnpj, paginacao=None):
@@ -60,20 +59,17 @@ def capturar_informacoes(processo, data_inicial):
     partes = processo.get('tramitacoes', [{}])[0].get('partes', [{}])
     classes = processo.get('tramitacoes', [{}])[0].get('classe', [{}])
     assunto = processo.get('tramitacoes', [{}])[0].get('assunto', [{}])[0].get("descricao")
-
     distribuicao = processo['tramitacoes'][0].get('dataHoraUltimaDistribuicao')
     data_distribuicao = datetime.strptime(distribuicao.split('.')[0], '%Y-%m-%dT%H:%M:%S') if distribuicao else None
-
     valor_acao = processo['tramitacoes'][0].get('valorAcao')
     estado_tribunal = processo.get('siglaTribunal')
     numero_processo = processo.get('numeroProcesso')
-
     nome_ativo, doc_ativo, nome_passivo, doc_passivo = None, None, None, None
+
     for parte in partes:
         if parte.get('polo') == 'ATIVO':
             nome_ativo = parte.get('nome')
             doc_ativo = parte.get('documentosPrincipais', [{}])[0].get('numero')
-
         if parte.get('polo') == 'PASSIVO':
             nome_passivo = parte.get('nome')
             doc_passivo = parte.get('documentosPrincipais', [{}])[0].get('numero')
@@ -91,12 +87,10 @@ def capturar_informacoes(processo, data_inicial):
             'Classe Judicial': classes,
             'Assunto': assunto,
         }
-
-    else:
-        return None
+    return None
 
 
-def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback):
+def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_existentes):
     log_callback(f"📄 Iniciando análise para CNPJ: {cnpj}")
     proxima_pagina = False
     dados_dos_processos = []
@@ -105,24 +99,22 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback):
 
     while proxima_pagina or pagina_atual == 1:
         log_callback(f"🔄 Buscando página {pagina_atual} para CNPJ {cnpj}...")
-
         dados_pagina = api_jusbr(bearer_code, cnpj, proxima_pagina)
-
         if not dados_pagina:
-            log_callback(f"⚠️ Página {pagina_atual} vazia ou erro na API. Encerrando para {cnpj}.")
+            log_callback(f"⚠️ Página {pagina_atual} vazia. Encerrando para {cnpj}.")
             break
-
         processos = dados_pagina.get('content', [])
         if not processos:
             log_callback(f"⚠️ Nenhum processo retornado na página {pagina_atual}.")
             break
-
         analisados += len(processos)
-
         proxima = dados_pagina.get('searchAfter')
         proxima_pagina = f"{proxima[0]},{proxima[1]}" if proxima else None
 
         for processo in processos:
+            numero_processo = processo.get('numeroProcesso')
+            if numero_processo and numero_processo in processos_existentes:
+                continue
             info = capturar_informacoes(processo, data_inicial)
             if info:
                 salvar_informacoes_no_json(info)
@@ -131,7 +123,6 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback):
         if not proxima_pagina:
             log_callback("🚫 Não há mais páginas disponíveis.")
             break
-
         pagina_atual += 1
 
     log_callback(
@@ -139,35 +130,26 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback):
     return len(dados_dos_processos)
 
 
-def executar(data_inicial, log_callback, bearer_code):
+def executar(data_inicial, log_callback, bearer_code, processos_existentes):
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
     cnpjs = [c.replace('.', '').replace('/', '').replace('-', '') for c in CNPJS]
     data_inicial = datetime.strptime(data_inicial, '%d/%m/%Y') if data_inicial else None
-
     total = 0
     for cnpj in cnpjs:
-        total += processar_cnpj(cnpj, bearer_code, data_inicial, log_callback)
+        total += processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_existentes)
     return total
 
 
 def iniciar_driver(callback_token_encontrado):
     options = Options()
     options.add_argument("--start-maximized")
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    )
+    options.add_argument("user-agent=Mozilla/5.0")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-
     driver = webdriver.Chrome(service=Service(), options=options)
-
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            });
-        """
+        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
     })
 
     def monitorar_logs():
@@ -184,35 +166,34 @@ def iniciar_driver(callback_token_encontrado):
             time.sleep(1)
 
     threading.Thread(target=monitorar_logs, daemon=True).start()
-
     return driver
 
 
-# === TKINTER INTERFACE ===
 class ConsultaJusbrApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Consulta Jusbr - Validação de Processos")
         self.root.geometry("800x600")
-
         self.data_inicial = tk.StringVar()
-        self.bloqueia_formatacao = False
-
         self.bearer_code = ''
+        self.excel_selecionado = False
+        self.caminho_excel = None
+        self.processos_existentes = set()
 
-        tk.Button(root, text="Abrir site do Jusbr", command=self.abrir_site_jusbr,
-                  bg="#337ab7", fg="white").pack(pady=(10, 20))
-
+        tk.Button(root, text="Abrir site do Jusbr", command=self.abrir_site_jusbr, bg="#337ab7", fg="white").pack(
+            pady=(10, 20))
         tk.Label(root, text="Data Inicial (dd/mm/aaaa):").pack(pady=5)
         tk.Entry(root, textvariable=self.data_inicial).pack()
+        tk.Button(root, text="Selecionar Excel com Nº do Processo", command=self.selecionar_excel).pack(pady=5)
 
-        tk.Button(root, text="Iniciar Consulta", command=self.iniciar_consulta).pack(pady=10)
+        self.iniciar_button = tk.Button(root, text="Iniciar Consulta", command=self.iniciar_consulta)
+        self.iniciar_button.pack(pady=10)
 
         self.log_text = scrolledtext.ScrolledText(root, height=25, width=100, state='disabled')
         self.log_text.pack(pady=10)
 
     def abrir_site_jusbr(self):
-        time.sleep(10)
+        time.sleep(2)
         self.log("🌐 Iniciando navegador...")
 
         def token_encontrado(token):
@@ -224,7 +205,6 @@ class ConsultaJusbrApp:
             self.driver.get("https://portaldeservicos.pdpj.jus.br/")
             self.log("🔐 Faça login manualmente no site.")
             self.log("⏳ Aguardando token de autenticação...")
-
         except Exception as e:
             self.log(f"❌ Erro ao iniciar navegador: {e}")
             messagebox.showerror("Erro", str(e))
@@ -236,6 +216,22 @@ class ConsultaJusbrApp:
         self.log_text.config(state='disabled')
         self.root.update_idletasks()
 
+    def selecionar_excel(self):
+        caminho_arquivo = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx *.xls")])
+        if not caminho_arquivo:
+            return
+        try:
+            df = pd.read_excel(caminho_arquivo)
+            if 'Nº do Processo' not in df.columns:
+                messagebox.showerror("Erro", "A planilha deve conter a coluna 'Nº do Processo'")
+                return
+            self.processos_existentes = set(df['Nº do Processo'].dropna().astype(str))
+            self.caminho_excel = caminho_arquivo
+            self.excel_selecionado = True
+            self.log(f"📁 Excel carregado. {len(self.processos_existentes)} processos existentes detectados.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao carregar Excel: {e}")
+
     def iniciar_consulta(self):
         data = self.data_inicial.get().strip()
         if data:
@@ -244,25 +240,40 @@ class ConsultaJusbrApp:
             except ValueError:
                 messagebox.showerror("Erro", "Data inválida (formato: dd/mm/aaaa)")
                 return
-
-        Thread(target=self.executar_thread, args=(data,)).start()
+        threading.Thread(target=self.executar_thread, args=(data,)).start()
 
     def executar_thread(self, data):
         try:
             self.log("🔍 Iniciando consulta...")
-
             if not self.bearer_code:
                 self.log("❌ Token não capturado. Faça login antes.")
                 return
-
-            total = executar(data, self.log, self.bearer_code)
+            total = executar(data, self.log, self.bearer_code, self.processos_existentes)
             self.log(f"✅ Consulta finalizada com {total} resultados.")
-            salvar_informacoes_no_excel()
-            self.log("📁 Excel gerado com sucesso!")
-
+            self.salvar_novos_processos()
         except Exception as e:
             self.log(f"❌ Erro: {e}")
             messagebox.showerror("Erro", str(e))
+
+    def salvar_novos_processos(self):
+        try:
+            with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r', encoding='utf-8') as f:
+                novos_dados = json.load(f)
+            df_novos = pd.DataFrame(novos_dados)
+
+            if self.caminho_excel:
+                df_existente = pd.read_excel(self.caminho_excel)
+                df_final = pd.concat([df_existente, df_novos], ignore_index=True)
+                df_final.to_excel(self.caminho_excel, index=False, engine='openpyxl')
+                self.log("✅ Novos processos adicionados na planilha original.")
+            else:
+                novo_arquivo = f'{NOME_ARQUIVO_PARA_SALVAR}.xlsx'
+                df_novos.to_excel(novo_arquivo, index=False, engine='openpyxl')
+                self.log(f"📄 Planilha nova criada: {novo_arquivo}")
+
+            os.remove(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar na planilha: {e}")
 
 
 if __name__ == "__main__":
