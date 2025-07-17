@@ -15,7 +15,6 @@ from selenium.webdriver.chrome.service import Service
 
 # === CONFIGURAÇÕES ===
 NOME_ARQUIVO_PARA_SALVAR = 'Consulta JUSBR'
-CNPJS = ["44.177.742/0001-62", "045.708.084-17"]
 
 
 def api_jusbr(bearer_code, cnpj, paginacao=None):
@@ -130,9 +129,9 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_exis
     return len(dados_dos_processos)
 
 
-def executar(data_inicial, log_callback, bearer_code, processos_existentes):
+def executar(data_inicial, log_callback, bearer_code, processos_existentes, lista_cpfs):
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
-    cnpjs = [c.replace('.', '').replace('/', '').replace('-', '') for c in CNPJS]
+    cnpjs = [c.replace('.', '').replace('/', '').replace('-', '') for c in lista_cpfs]
     data_inicial = datetime.strptime(data_inicial, '%d/%m/%Y') if data_inicial else None
     total = 0
     for cnpj in cnpjs:
@@ -184,7 +183,8 @@ class ConsultaJusbrApp:
             pady=(10, 20))
         tk.Label(root, text="Data Inicial (dd/mm/aaaa):").pack(pady=5)
         tk.Entry(root, textvariable=self.data_inicial).pack()
-        tk.Button(root, text="Selecionar o Excel", command=self.selecionar_excel).pack(pady=5)
+        tk.Button(root, text="Selecionar o Excel de Processos", command=self.selecionar_excel).pack(pady=5)
+        tk.Button(root, text="Selecionar planilha de CPFs/CNPJs", command=self.selecionar_cpfs_cnpjs).pack(pady=5)
 
         self.iniciar_button = tk.Button(root, text="Iniciar Consulta", command=self.iniciar_consulta)
         self.iniciar_button.pack(pady=10)
@@ -232,6 +232,24 @@ class ConsultaJusbrApp:
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao carregar Excel: {e}")
 
+    def selecionar_cpfs_cnpjs(self):
+        caminho = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx *.xls")])
+        if not caminho:
+            return
+        try:
+            df = pd.read_excel(caminho)
+            colunas_possiveis = ['CPF', 'CNPJ', 'CPF/CNPJ']
+            for col in colunas_possiveis:
+                if col in df.columns:
+                    self.lista_cpfs_cnpjs = df[col].dropna().astype(str).tolist()
+                    break
+            else:
+                messagebox.showerror("Erro", "A planilha deve conter uma coluna chamada 'CPF', 'CNPJ' ou 'CPF/CNPJ'")
+                return
+            self.log(f"📄 Lista de CPFs/CNPJs carregada com {len(self.lista_cpfs_cnpjs)} registros.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao carregar planilha de CPFs/CNPJs: {e}")
+
     def iniciar_consulta(self):
         data = self.data_inicial.get().strip()
         if data:
@@ -248,7 +266,13 @@ class ConsultaJusbrApp:
             if not self.bearer_code:
                 self.log("❌ Token não capturado. Faça login antes.")
                 return
-            total = executar(data, self.log, self.bearer_code, self.processos_existentes)
+
+            if not self.lista_cpfs_cnpjs:
+                self.log("⚠️ Nenhuma planilha de CPFs/CNPJs carregada.")
+                messagebox.showwarning("Atenção", "Você precisa selecionar a planilha de CPFs/CNPJs antes de iniciar.")
+                return
+
+            total = executar(data, self.log, self.bearer_code, self.processos_existentes, self.lista_cpfs_cnpjs)
             self.log(f"✅ Consulta finalizada com {total} resultados.")
             self.salvar_novos_processos()
         except Exception as e:
