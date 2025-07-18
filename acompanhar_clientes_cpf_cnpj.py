@@ -105,6 +105,7 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_exis
     dados_dos_processos = []
     analisados = 0
     pagina_atual = 1
+    total_processos = None
 
     while proxima_pagina or pagina_atual == 1:
         log_callback(f"🔄 Buscando página {pagina_atual} para CNPJ {cnpj}...")
@@ -112,10 +113,15 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_exis
         if not dados_pagina:
             log_callback(f"⚠️ Página {pagina_atual} vazia. Encerrando para {cnpj}.")
             break
+
+        if total_processos is None:
+            total_processos = dados_pagina.get('total', 0)
+
         processos = dados_pagina.get('content', [])
         if not processos:
             log_callback(f"⚠️ Nenhum processo retornado na página {pagina_atual}.")
             break
+
         analisados += len(processos)
         proxima = dados_pagina.get('searchAfter')
         proxima_pagina = f"{proxima[0]},{proxima[1]}" if proxima else None
@@ -129,13 +135,14 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_exis
                 salvar_informacoes_no_json(info)
                 dados_dos_processos.append(info)
 
-        if not proxima_pagina:
-            log_callback("🚫 Não há mais páginas disponíveis.")
+        if analisados >= total_processos:
+            log_callback("🚫 Não há mais páginas disponíveis ou todos os processos foram analisados.")
             break
+
         pagina_atual += 1
 
     log_callback(
-        f"✅ Finalizado {cnpj}. Total capturado: {len(dados_dos_processos)} processos válidos em {pagina_atual - 1} páginas.")
+        f"✅ Finalizado {cnpj}. Total capturado: {len(dados_dos_processos)} processos válidos em {pagina_atual} páginas.")
     return len(dados_dos_processos)
 
 
