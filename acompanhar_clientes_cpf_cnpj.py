@@ -28,7 +28,8 @@ def api_jusbr(bearer_code, cnpj, paginacao=None):
 
 
 def formatar_documento(documento):
-    if documento:
+    if documento and isinstance(documento, str):
+        documento = documento.strip().replace('.', '').replace('-', '').replace('/', '')
         if len(documento) == 11:
             return f"{documento[:3]}.{documento[3:6]}.{documento[6:9]}-{documento[9:]}"
         elif len(documento) == 14:
@@ -55,36 +56,45 @@ def salvar_informacoes_no_excel():
 
 
 def capturar_informacoes(processo, data_inicial):
-    partes = processo.get('tramitacoes', [{}])[0].get('partes', [{}])
-    classes = processo.get('tramitacoes', [{}])[0].get('classe', [{}])
-    assunto = processo.get('tramitacoes', [{}])[0].get('assunto', [{}])[0].get("descricao")
-    distribuicao = processo['tramitacoes'][0].get('dataHoraUltimaDistribuicao')
-    data_distribuicao = datetime.strptime(distribuicao.split('.')[0], '%Y-%m-%dT%H:%M:%S') if distribuicao else None
-    valor_acao = processo['tramitacoes'][0].get('valorAcao')
-    estado_tribunal = processo.get('siglaTribunal')
-    numero_processo = processo.get('numeroProcesso')
-    nome_ativo, doc_ativo, nome_passivo, doc_passivo = None, None, None, None
+    tramitacoes = processo.get('tramitacoes', [])
+    tramitacao = tramitacoes[0] if tramitacoes else {}
+    partes = tramitacao.get('partes', [])
+    classes = tramitacao.get('classe', '') or ''
+    assunto_info = tramitacao.get('assunto', [{}])
+    assunto = assunto_info[0].get("descricao") if assunto_info and isinstance(assunto_info, list) else ''
 
+    distribuicao = tramitacao.get('dataHoraUltimaDistribuicao') or ''
+    try:
+        data_distribuicao = datetime.strptime(distribuicao.split('.')[0], '%Y-%m-%dT%H:%M:%S') if distribuicao else None
+    except Exception:
+        data_distribuicao = None
+
+    valor_acao = tramitacao.get('valorAcao') or 0
+    estado_tribunal = processo.get('siglaTribunal', '') or ''
+    numero_processo = processo.get('numeroProcesso', '') or ''
+
+    nome_ativo, doc_ativo, nome_passivo, doc_passivo = None, None, None, None
     for parte in partes:
-        if parte.get('polo') == 'ATIVO':
+        polo = parte.get('polo', '')
+        if polo == 'ATIVO':
             nome_ativo = parte.get('nome')
-            doc_ativo = parte.get('documentosPrincipais', [{}])[0].get('numero')
-        if parte.get('polo') == 'PASSIVO':
+            doc_ativo = (parte.get('documentosPrincipais') or [{}])[0].get('numero')
+        elif polo == 'PASSIVO':
             nome_passivo = parte.get('nome')
-            doc_passivo = parte.get('documentosPrincipais', [{}])[0].get('numero')
+            doc_passivo = (parte.get('documentosPrincipais') or [{}])[0].get('numero')
 
     if data_distribuicao and (not data_inicial or data_distribuicao > data_inicial):
         return {
             'Data da distribuição': data_distribuicao.strftime('%d/%m/%Y'),
             'Polo Ativo': nome_ativo.title() if nome_ativo else 'Desconhecido',
-            'CPF/CNPJ Ativo': formatar_documento(doc_ativo),
-            'Polo Passivo': nome_passivo.title() if nome_ativo else 'Desconhecido',
-            'CPF/CNPJ Passivo': formatar_documento(doc_passivo),
+            'CPF/CNPJ Ativo': formatar_documento(doc_ativo) or '',
+            'Polo Passivo': nome_passivo.title() if nome_passivo else 'Desconhecido',
+            'CPF/CNPJ Passivo': formatar_documento(doc_passivo) or '',
             'Nº do Processo': numero_processo,
             'Tribunal': estado_tribunal,
             'Valor Causa': locale.currency(valor_acao, grouping=True) if valor_acao else '',
-            'Classe Judicial': classes,
-            'Assunto': assunto,
+            'Classe Judicial': classes or '',
+            'Assunto': assunto or '',
         }
     return None
 
@@ -131,7 +141,7 @@ def processar_cnpj(cnpj, bearer_code, data_inicial, log_callback, processos_exis
 
 def executar(data_inicial, log_callback, bearer_code, processos_existentes, lista_cpfs):
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
-    cnpjs = [c.replace('.', '').replace('/', '').replace('-', '') for c in lista_cpfs]
+    cnpjs = [c.replace('.', '').replace('/', '').replace('-', '') for c in lista_cpfs if c]
     data_inicial = datetime.strptime(data_inicial, '%d/%m/%Y') if data_inicial else None
     total = 0
     for cnpj in cnpjs:
