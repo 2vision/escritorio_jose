@@ -14,10 +14,11 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 # === CONFIGURAÇÕES ===
-NOME_ARQUIVO_PARA_SALVAR = 'JUSBR'
+NOME_ARQUIVO_PARA_SALVAR = 'Consulta JUSBR'
 
 
-def api_jusbr(bearer_code, filtro, paginacao=None):
+def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
+    time.sleep(0.4)
     url_base = 'https://portaldeservicos.pdpj.jus.br/api/v2/processos'
     headers = {'Authorization': f'{bearer_code}'}
 
@@ -29,7 +30,13 @@ def api_jusbr(bearer_code, filtro, paginacao=None):
     if paginacao:
         query_params['searchAfter'] = paginacao
     response = requests.get(url_base, headers=headers, params=query_params)
-    return response.json() if response.status_code == 200 else None
+
+    if response.status_code != 200:
+        if log_callback:
+            log_callback(f"❌ Erro ao buscar processos (status {response.status_code}): {response.text}")
+        return None
+
+    return response.json()
 
 
 def formatar_documento(documento):
@@ -52,7 +59,7 @@ def salvar_informacoes_no_json(informacoes):
         json.dump(dados, f, indent=4, ensure_ascii=False)
 
 
-def capturar_informacoes(processo, data_inicial, data_final):
+def capturar_informacoes(processo):
     tramitacoes = processo.get('tramitacoes', [])
     tramitacao = tramitacoes[0] if tramitacoes else {}
     partes = tramitacao.get('partes', [])
@@ -80,19 +87,18 @@ def capturar_informacoes(processo, data_inicial, data_final):
             nome_passivo = parte.get('nome')
             doc_passivo = (parte.get('documentosPrincipais') or [{}])[0].get('numero')
 
-        return {
-            'Data da distribuição': data_distribuicao.strftime('%d/%m/%Y') if data_distribuicao else '',
-            'Polo Ativo': nome_ativo.title() if nome_ativo else 'Desconhecido',
-            'CPF/CNPJ Ativo': formatar_documento(doc_ativo) or '',
-            'Polo Passivo': nome_passivo.title() if nome_passivo else 'Desconhecido',
-            'CPF/CNPJ Passivo': formatar_documento(doc_passivo) or '',
-            'Nº do Processo': numero_processo,
-            'Tribunal': estado_tribunal,
-            'Valor Causa': locale.currency(valor_acao, grouping=True) if valor_acao else '',
-            'Classe Judicial': classes or '',
-            'Assunto': assunto or '',
-        }
-    return None
+    return {
+        'Data da distribuição': data_distribuicao.strftime('%d/%m/%Y') if data_distribuicao else '',
+        'Polo Ativo': nome_ativo.title() if nome_ativo else 'Desconhecido',
+        'CPF/CNPJ Ativo': formatar_documento(doc_ativo) or '',
+        'Polo Passivo': nome_passivo.title() if nome_passivo else 'Desconhecido',
+        'CPF/CNPJ Passivo': formatar_documento(doc_passivo) or '',
+        'Nº do Processo': numero_processo,
+        'Tribunal': estado_tribunal,
+        'Valor Causa': locale.currency(valor_acao, grouping=True) if valor_acao else '',
+        'Classe Judicial': classes or '',
+        'Assunto': assunto or '',
+    }
 
 
 def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback, movimentos_existentes):
@@ -112,7 +118,7 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
 
     while proxima_pagina or pagina_atual == 1:
         log_callback(f"🔄 Buscando página {pagina_atual} para {tipo} {numero}...")
-        dados_pagina = api_jusbr(bearer_code, numero, proxima_pagina)
+        dados_pagina = api_jusbr(log_callback, bearer_code, numero, proxima_pagina)
         if not dados_pagina:
             log_callback(f"⚠️ Página {pagina_atual} vazia. Encerrando para {numero}.")
             break
@@ -133,8 +139,8 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
         for processo in processos:
             numero_processo = processo.get('numeroProcesso')
 
-            processo_info = capturar_informacoes(processo, data_inicial, data_final)
-            movimentos_info = obter_movimentos(bearer_code, numero_processo)
+            processo_info = capturar_informacoes(processo)
+            movimentos_info = obter_movimentos(log_callback, bearer_code, numero_processo)
 
             if movimentos_info:
                 for movimento in movimentos_info:
@@ -165,7 +171,7 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
         pagina_atual += 1
 
     log_callback(
-        f"✅ Finalizado {numero}. Total capturado: {len(dados_dos_processos)} movimentos válidos em {pagina_atual} páginas.")
+        f"✅ Finalizado {numero}. Total capturado: {len(dados_dos_processos)} movimentos válidos.")
     return len(dados_dos_processos)
 
 
@@ -211,11 +217,15 @@ def iniciar_driver(callback_token_encontrado):
     return driver
 
 
-def obter_movimentos(bearer_code, numero_processo):
+def obter_movimentos(log_callback, bearer_code, numero_processo):
+    time.sleep(0.4)
     url = f'https://portaldeservicos.pdpj.jus.br/api/v2/processos/{numero_processo}'
     headers = {'Authorization': bearer_code}
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
+        if log_callback:
+            log_callback(
+                f"❌ Erro ao obter movimentos do processo {numero_processo} (status {response.status_code}): {response.text}")
         return []
     data = response.json()
     movimentos = []
@@ -245,7 +255,7 @@ class ConsultaJusbrApp:
         self.root.geometry("800x600")
         self.data_inicial = tk.StringVar()
         self.data_final = tk.StringVar()
-        self.bearer_code = ''
+        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTMxNDQyOTAsImlhdCI6MTc1MzExNTQ5MCwiYXV0aF90aW1lIjoxNzUzMTE1NDg1LCJqdGkiOiI1ZDkzNGI0ZS01MzgwLTQ0N2YtYjY2Ni02NjE5NjZjMmIwODEiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6IjkzYWE2M2E4LTUxMzYtNGY3Mi1iYWJmLTg3MjcwZTI3NjVmNSIsInNlc3Npb25fc3RhdGUiOiIwYzkyZTM0Yy05N2NhLTQxMTgtOTNmMi1hNjBiZjdiM2JlZDIiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiIwYzkyZTM0Yy05N2NhLTQxMTgtOTNmMi1hNjBiZjdiM2JlZDIiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.JdDcxHhOKoZHsDH76lyj09mR5VgM8t0AWU0gjIJjFVamY35TtUC2utmQDGthVyws4FYvcTWhQEbbI12AIEpMHbENC6Gp-b2V0-TlFQUyP9vAOctRbOkbo9sECzc4fETRQlrYSRfTOLebB0dRv3ZPqQGypGIUlxIRbz5x-tiOjBERERE9N09CLm9fTs_KKqiBibzy0aFRHWhhgLPkCDU1dDrOUp1nFu10zrRhywDtJ-Bt3qgCe9ZO1lTUPwtbDyPsRt4ULOQFjmBpi6E5mAFxFf0JINmDhAaRjbrAKnJn3r-JsoxAPObH7p6rEmK_6K7jL4cTs3q-S-nuCT8pQ3SvmA'
         self.caminho_excel = None
         self.movimentos_existentes = {}
 
@@ -388,7 +398,7 @@ class ConsultaJusbrApp:
 
     def salvar_novos_processos(self):
         try:
-            data = datetime.now().strftime('%d-%m-%Y %H %M')
+            data = datetime.now().strftime('%Y-%m-%d %H %M')
 
             json_path = f'{NOME_ARQUIVO_PARA_SALVAR}.json'
             if not os.path.exists(json_path):
