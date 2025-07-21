@@ -14,7 +14,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 # === CONFIGURAÇÕES ===
-NOME_ARQUIVO_PARA_SALVAR = 'Consulta JUSBR'
+NOME_ARQUIVO_PARA_SALVAR = 'JUSBR'
 
 
 def api_jusbr(bearer_code, filtro, paginacao=None):
@@ -52,16 +52,6 @@ def salvar_informacoes_no_json(informacoes):
         json.dump(dados, f, indent=4, ensure_ascii=False)
 
 
-def salvar_informacoes_no_excel():
-    data = datetime.now().strftime('%d-%m-%Y')
-
-    with open(f'{NOME_ARQUIVO_PARA_SALVAR}.json', 'r', encoding='utf-8') as f:
-        dados = json.load(f)
-    df = pd.DataFrame(dados)
-    df.to_excel(f'{NOME_ARQUIVO_PARA_SALVAR} - {data}.xlsx', index=False, engine='openpyxl')
-    os.remove(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
-
-
 def capturar_informacoes(processo, data_inicial, data_final):
     tramitacoes = processo.get('tramitacoes', [])
     tramitacao = tramitacoes[0] if tramitacoes else {}
@@ -91,7 +81,7 @@ def capturar_informacoes(processo, data_inicial, data_final):
             doc_passivo = (parte.get('documentosPrincipais') or [{}])[0].get('numero')
 
         return {
-            'Data da distribuição': data_distribuicao.strftime('%d/%m/%Y'),
+            'Data da distribuição': data_distribuicao.strftime('%d/%m/%Y') if data_distribuicao else '',
             'Polo Ativo': nome_ativo.title() if nome_ativo else 'Desconhecido',
             'CPF/CNPJ Ativo': formatar_documento(doc_ativo) or '',
             'Polo Passivo': nome_passivo.title() if nome_passivo else 'Desconhecido',
@@ -162,9 +152,9 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
                             continue
 
                     if processo_info:
-                        processo_info['Data do Movimento'] = data_mov.strftime('%d/%m/%Y')
+                        processo_info['Data do Movimento'] = data_mov.strftime('%d/%m/%Y') if data_mov else ''
                         processo_info['Movimento'] = movimento.get('movimento')
-                        processo_info['DataHora'] = data_mov.strftime('%d/%m/%Y %H:%M:%S')
+                        processo_info['DataHora'] = data_mov.strftime('%d/%m/%Y %H:%M:%S') if data_mov else ''
                         salvar_informacoes_no_json(processo_info)
                         dados_dos_processos.append(processo_info)
 
@@ -398,7 +388,7 @@ class ConsultaJusbrApp:
 
     def salvar_novos_processos(self):
         try:
-            data = datetime.now().strftime('%d-%m-%Y')
+            data = datetime.now().strftime('%d-%m-%Y %H %M')
 
             json_path = f'{NOME_ARQUIVO_PARA_SALVAR}.json'
             if not os.path.exists(json_path):
