@@ -49,7 +49,10 @@ def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
                 ERROS_CAPTURA[504].append(f"[Busca] Filtro: {filtro} | Erro: {mensagem}")
                 return None
 
-            erro = json.loads(response.text).get('message').replace('registros', 'processos')
+            erro = json.loads(response.text).get('message')
+
+            if erro:
+                erro.replace('registros', 'processos')
             log_callback(f"❌ {erro}", tag='erro')
             ERROS_CAPTURA[response.status_code].append(f"[Busca] Filtro: {filtro} | Erro: {erro}")
         return None
@@ -131,7 +134,8 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
 
     if tipo == 'Número Desconhecido':
         log_callback(f"❌ O numero {numero} não corresponde a um CPF, CNPJ ou Número de Processo", tag='erro')
-        ERROS_CAPTURA[0].append(f"[Busca] Filtro: {numero} | Erro: Não corresponde a um CPF, CNPJ ou Número de Processo")
+        ERROS_CAPTURA[0].append(
+            f"[Busca] Filtro: {numero} | Erro: Não corresponde a um CPF, CNPJ ou Número de Processo")
         return 0
 
     dados_pagina = None
@@ -239,7 +243,7 @@ def iniciar_driver(callback_token_encontrado):
 
 
 def obter_movimentos(log_callback, bearer_code, numero_processo):
-    time.sleep(0.7)
+    time.sleep(0.6)
     url = f'https://portaldeservicos.pdpj.jus.br/api/v2/processos/{numero_processo}'
     headers = {'Authorization': bearer_code}
     response = requests.get(url, headers=headers)
@@ -287,7 +291,7 @@ class ConsultaJusbrApp:
         self.root.geometry("800x600")
         self.data_inicial = tk.StringVar()
         self.data_final = tk.StringVar()
-        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTM3Njc3NDUsImlhdCI6MTc1MzczODk0NiwiYXV0aF90aW1lIjoxNzUzNzM4OTM4LCJqdGkiOiI4ZDc3ODI1Yi1kMTYzLTQzYWItOTc3NS0yZDA1ODQxZTcyNmQiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6IjMyNDJhMTlmLTA4YmEtNGU2YS05ZGMzLWQxOWY4NGUxODUxYiIsInNlc3Npb25fc3RhdGUiOiJiMjlkZDdmOS02OGNlLTRlYjQtYWQ4MC1lZmRlZWJmODg4YWIiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJiMjlkZDdmOS02OGNlLTRlYjQtYWQ4MC1lZmRlZWJmODg4YWIiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.2LL3-KKyVRGv48c6xvJq2D20xW6jICODCczqJyzjsni6DBqshdG-R4fDvqhDCJuCXGqVIZL8ofDB21PnwiEWbfe-uc1dJzeICG0uw1T7VnLKw-VCxpOuIiOFKnq4xZ8FIi2_XOQlWyV0m3PF34ZZihSIsvjRUdbGor7pNZj5B0OloIQ4twd9-RL13vNPtIyHC8u2rOhRQFeLdh1GcS4FFAzwdchcqANmU4SwXolStANZMZ-XCFV5XXw_cgtaZUSbZLmHfTbx1hYVVSNPVydShsLRcKgavspWJeFVDAhnDKmhorcVsemBreVvaN5h_7_8RKqYkB_ZVekeDd_5IPZ7UQ'
+        self.bearer_code = ''
         self.caminho_excel = None
         self.movimentos_existentes = {}
 
@@ -310,7 +314,7 @@ class ConsultaJusbrApp:
         self.log_text.pack(pady=10)
 
     def abrir_site_jusbr(self):
-        time.sleep(2)
+        time.sleep(1.5)
         self.log("🌐 Iniciando navegador...")
 
         def token_encontrado(token):
