@@ -4,6 +4,7 @@ import os
 import threading
 import time
 import tkinter as tk
+from collections import defaultdict
 from datetime import datetime
 from tkinter import filedialog, messagebox, scrolledtext
 
@@ -13,12 +14,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
-# === CONFIGURAÇÕES ===
 NOME_ARQUIVO_PARA_SALVAR = 'Consulta JUSBR'
+ERROS_CAPTURA = defaultdict(list)
 
 
 def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
-    time.sleep(0.6)
     url_base = 'https://portaldeservicos.pdpj.jus.br/api/v2/processos'
     headers = {'Authorization': f'{bearer_code}'}
 
@@ -33,7 +33,25 @@ def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
 
     if response.status_code != 200:
         if log_callback:
-            log_callback(f"❌ Erro ao buscar processos (status {response.status_code}): {response.text}")
+            if response.status_code == 401:
+                log_callback(f"❌ Token inválido!", tag='erro')
+                return None
+
+            if response.status_code == 500:
+                mensagem = 'Número do processo inexistente!'
+                log_callback(f"❌ {mensagem}", tag='erro')
+                ERROS_CAPTURA[500].append(f"[Busca] Filtro: {filtro} | Erro: {mensagem}")
+                return None
+
+            if response.status_code == 504:
+                mensagem = 'Timeout, não foi possivel executar a requisição dos processos!'
+                log_callback(f"❌ {mensagem}", tag='erro')
+                ERROS_CAPTURA[504].append(f"[Busca] Filtro: {filtro} | Erro: {mensagem}")
+                return None
+
+            erro = json.loads(response.text).get('message').replace('registros', 'processos')
+            log_callback(f"❌ {erro}", tag='erro')
+            ERROS_CAPTURA[response.status_code].append(f"[Busca] Filtro: {filtro} | Erro: {erro}")
         return None
 
     return response.json()
@@ -108,28 +126,30 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
         "Número do Processo" if len(numero) == 20 else
         "Número Desconhecido"
     )
+
     log_callback(f"📄 Iniciando análise para {tipo}: {numero}")
 
+    if tipo == 'Número Desconhecido':
+        log_callback(f"❌ O numero {numero} não corresponde a um CPF, CNPJ ou Número de Processo", tag='erro')
+        ERROS_CAPTURA[0].append(f"[Busca] Filtro: {numero} | Erro: Não corresponde a um CPF, CNPJ ou Número de Processo")
+        return 0
+
+    dados_pagina = None
     proxima_pagina = False
     dados_dos_processos = []
     analisados = 0
     pagina_atual = 1
-    total_processos = None
+    total_processos = 0
 
     while proxima_pagina or pagina_atual == 1:
-        log_callback(f"🔄 Buscando página {pagina_atual} para {tipo} {numero}...")
         dados_pagina = api_jusbr(log_callback, bearer_code, numero, proxima_pagina)
         if not dados_pagina:
-            log_callback(f"⚠️ Página {pagina_atual} vazia. Encerrando para {numero}.")
             break
 
-        if total_processos is None:
-            total_processos = dados_pagina.get('total', 0)
-            log_callback(f"📦 Total de processos encontrados: {total_processos}")
+        total_processos = dados_pagina.get('total', 0)
 
         processos = dados_pagina.get('content', [])
         if not processos:
-            log_callback(f"⚠️ Nenhum processo retornado na página {pagina_atual}.")
             break
 
         analisados += len(processos)
@@ -165,13 +185,15 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
                         dados_dos_processos.append(processo_info)
 
         if analisados >= total_processos:
-            log_callback("🚫 Não há mais páginas disponíveis ou todos os processos foram analisados.")
             break
 
         pagina_atual += 1
 
-    log_callback(
-        f"✅ Finalizado {numero}. Total capturado: {len(dados_dos_processos)} movimentos válidos.")
+    if dados_pagina:
+        log_callback(
+            f"✅ Finalizado. Analisados {total_processos} processos. Capturado {len(dados_dos_processos)} movimentos válidos.",
+            tag='success'
+        )
     return len(dados_dos_processos)
 
 
@@ -211,21 +233,31 @@ def iniciar_driver(callback_token_encontrado):
                     if auth:
                         callback_token_encontrado(auth)
                         return
-            time.sleep(1)
 
     threading.Thread(target=monitorar_logs, daemon=True).start()
     return driver
 
 
 def obter_movimentos(log_callback, bearer_code, numero_processo):
-    time.sleep(1)
+    time.sleep(0.7)
     url = f'https://portaldeservicos.pdpj.jus.br/api/v2/processos/{numero_processo}'
     headers = {'Authorization': bearer_code}
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         if log_callback:
-            log_callback(
-                f"❌ Erro ao obter movimentos do processo {numero_processo} (status {response.status_code}): {response.text}")
+            if response.status_code == 504:
+                mensagem = 'Timeout, não foi possivel executar a requisição dos processos!'
+                log_callback(f"❌ {mensagem}", tag='erro')
+                ERROS_CAPTURA[504].append(f"[Processo] Processo: {numero_processo} | Erro: {mensagem}")
+                return []
+
+            if response.status_code == 400:
+                ERROS_CAPTURA[400].append(f"[Processo] Processo: {numero_processo} | Erro: Em segredo de justiça")
+                return []
+
+            erro = json.loads(response.text).get('message')
+            log_callback(f"❌ {erro}", tag='erro')
+            ERROS_CAPTURA[response.status_code].append(f"[Busca] Filtro: {numero_processo} | Erro: {erro}")
         return []
     data = response.json()
     movimentos = []
@@ -255,7 +287,7 @@ class ConsultaJusbrApp:
         self.root.geometry("800x600")
         self.data_inicial = tk.StringVar()
         self.data_final = tk.StringVar()
-        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTMxNDQyOTAsImlhdCI6MTc1MzExNTQ5MCwiYXV0aF90aW1lIjoxNzUzMTE1NDg1LCJqdGkiOiI1ZDkzNGI0ZS01MzgwLTQ0N2YtYjY2Ni02NjE5NjZjMmIwODEiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6IjkzYWE2M2E4LTUxMzYtNGY3Mi1iYWJmLTg3MjcwZTI3NjVmNSIsInNlc3Npb25fc3RhdGUiOiIwYzkyZTM0Yy05N2NhLTQxMTgtOTNmMi1hNjBiZjdiM2JlZDIiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiIwYzkyZTM0Yy05N2NhLTQxMTgtOTNmMi1hNjBiZjdiM2JlZDIiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.JdDcxHhOKoZHsDH76lyj09mR5VgM8t0AWU0gjIJjFVamY35TtUC2utmQDGthVyws4FYvcTWhQEbbI12AIEpMHbENC6Gp-b2V0-TlFQUyP9vAOctRbOkbo9sECzc4fETRQlrYSRfTOLebB0dRv3ZPqQGypGIUlxIRbz5x-tiOjBERERE9N09CLm9fTs_KKqiBibzy0aFRHWhhgLPkCDU1dDrOUp1nFu10zrRhywDtJ-Bt3qgCe9ZO1lTUPwtbDyPsRt4ULOQFjmBpi6E5mAFxFf0JINmDhAaRjbrAKnJn3r-JsoxAPObH7p6rEmK_6K7jL4cTs3q-S-nuCT8pQ3SvmA'
+        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTM3Njc3NDUsImlhdCI6MTc1MzczODk0NiwiYXV0aF90aW1lIjoxNzUzNzM4OTM4LCJqdGkiOiI4ZDc3ODI1Yi1kMTYzLTQzYWItOTc3NS0yZDA1ODQxZTcyNmQiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6IjMyNDJhMTlmLTA4YmEtNGU2YS05ZGMzLWQxOWY4NGUxODUxYiIsInNlc3Npb25fc3RhdGUiOiJiMjlkZDdmOS02OGNlLTRlYjQtYWQ4MC1lZmRlZWJmODg4YWIiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJiMjlkZDdmOS02OGNlLTRlYjQtYWQ4MC1lZmRlZWJmODg4YWIiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.2LL3-KKyVRGv48c6xvJq2D20xW6jICODCczqJyzjsni6DBqshdG-R4fDvqhDCJuCXGqVIZL8ofDB21PnwiEWbfe-uc1dJzeICG0uw1T7VnLKw-VCxpOuIiOFKnq4xZ8FIi2_XOQlWyV0m3PF34ZZihSIsvjRUdbGor7pNZj5B0OloIQ4twd9-RL13vNPtIyHC8u2rOhRQFeLdh1GcS4FFAzwdchcqANmU4SwXolStANZMZ-XCFV5XXw_cgtaZUSbZLmHfTbx1hYVVSNPVydShsLRcKgavspWJeFVDAhnDKmhorcVsemBreVvaN5h_7_8RKqYkB_ZVekeDd_5IPZ7UQ'
         self.caminho_excel = None
         self.movimentos_existentes = {}
 
@@ -272,7 +304,9 @@ class ConsultaJusbrApp:
         self.iniciar_button = tk.Button(root, text="Iniciar Consulta", command=self.iniciar_consulta)
         self.iniciar_button.pack(pady=10)
 
-        self.log_text = scrolledtext.ScrolledText(root, height=25, width=100, state='disabled')
+        self.log_text = scrolledtext.ScrolledText(root, height=25, width=130, state='disabled')
+        self.log_text.tag_config('erro', foreground='red')
+        self.log_text.tag_config('success', foreground='green')
         self.log_text.pack(pady=10)
 
     def abrir_site_jusbr(self):
@@ -289,12 +323,13 @@ class ConsultaJusbrApp:
             self.log("🔐 Faça login manualmente no site.")
             self.log("⏳ Aguardando token de autenticação...")
         except Exception as e:
-            self.log(f"❌ Erro ao iniciar navegador: {e}")
+            self.log(f"❌ Erro ao iniciar navegador: {e}", tag='erro')
             messagebox.showerror("Erro", str(e))
 
-    def log(self, message):
+    def log(self, message, tag=None, nova_linha=False):
         self.log_text.config(state='normal')
-        self.log_text.insert(tk.END, f"{datetime.now().strftime('%H:%M:%S')} - {message}\n")
+        prefixo = '\n' if nova_linha else ''
+        self.log_text.insert(tk.END, f"{prefixo}{datetime.now().strftime('%H:%M:%S')} - {message}\n", tag)
         self.log_text.see(tk.END)
         self.log_text.config(state='disabled')
         self.root.update_idletasks()
@@ -389,11 +424,20 @@ class ConsultaJusbrApp:
 
             total = executar(data_ini, data_fim, self.log, self.bearer_code, self.movimentos_existentes,
                              self.para_capturar)
-            self.log(f"✅ Consulta finalizada com {total} resultados.")
+            self.log(f"✅ Consulta finalizada com {total} resultados.", tag='success', nova_linha=True)
             self.salvar_novos_processos()
 
+            if ERROS_CAPTURA:
+                self.log("🚨 Resumo de erros por código de status:", tag='erro', nova_linha=True)
+                for status_code, mensagens in ERROS_CAPTURA.items():
+                    self.log(f"🔴 HTTP {status_code} - {len(mensagens)} ocorrência(s):", tag='erro', nova_linha=True)
+                    for mensagem in mensagens:
+                        self.log(f"• {mensagem}", tag='erro')
+            else:
+                self.log("✅ Nenhum erro durante a execução.", tag='success', nova_linha=True)
+
         except Exception as e:
-            self.log(f"❌ Erro: {e}")
+            self.log(f"❌ Erro: {e}", tag='erro')
             messagebox.showerror("Erro", str(e))
 
     def salvar_novos_processos(self):
@@ -402,7 +446,7 @@ class ConsultaJusbrApp:
 
             json_path = f'{NOME_ARQUIVO_PARA_SALVAR}.json'
             if not os.path.exists(json_path):
-                self.log("📭 Nenhum novo processo encontrado. Nada a salvar.")
+                self.log("📭 Nenhum novo processo encontrado. Nada a salvar.", tag='success', nova_linha=True)
                 return
 
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -415,6 +459,7 @@ class ConsultaJusbrApp:
 
             os.remove(json_path)
         except Exception as e:
+            self.log(f"❌ Erro ao gerar planilha: {e}", tag='erro')
             messagebox.showerror("Erro", f"Erro ao salvar na planilha: {e}")
 
 
