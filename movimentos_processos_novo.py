@@ -5,7 +5,7 @@ import threading
 import time
 import tkinter as tk
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from tkinter import filedialog, messagebox, scrolledtext
 
 import pandas as pd
@@ -172,7 +172,7 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
 
                     if data_inicial and data_mov < data_inicial:
                         continue
-                    if data_final and data_mov > data_final:
+                    if data_final and data_mov > data_final + timedelta(days=1):
                         continue
 
                     if movimentos_existentes:
