@@ -19,6 +19,7 @@ ERROS_CAPTURA = defaultdict(list)
 
 
 def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
+    time.sleep(0.5)
     url_base = 'https://portaldeservicos.pdpj.jus.br/api/v2/processos'
     headers = {'Authorization': f'{bearer_code}'}
 
@@ -49,7 +50,10 @@ def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
                 ERROS_CAPTURA[504].append(f"[Busca] Filtro: {filtro} | Erro: {mensagem}")
                 return None
 
-            erro = json.loads(response.text).get('message')
+            try:
+                erro = json.loads(response.text).get('message')
+            except json.JSONDecodeError:
+                erro = response.text or 'Resposta vazia ou inválida'
 
             if erro:
                 erro.replace('registros', 'processos')
@@ -134,8 +138,7 @@ def processar_numero(numero, bearer_code, data_inicial, data_final, log_callback
 
     if tipo == 'Número Desconhecido':
         log_callback(f"❌ O numero {numero} não corresponde a um CPF, CNPJ ou Número de Processo", tag='erro')
-        ERROS_CAPTURA[0].append(
-            f"[Busca] Filtro: {numero} | Erro: Não corresponde a um CPF, CNPJ ou Número de Processo")
+        ERROS_CAPTURA[0].append(f"[Busca] Filtro: {numero} | Erro: Não corresponde a um CPF, CNPJ ou Número de Processo")
         return 0
 
     dados_pagina = None
@@ -243,7 +246,7 @@ def iniciar_driver(callback_token_encontrado):
 
 
 def obter_movimentos(log_callback, bearer_code, numero_processo):
-    time.sleep(0.6)
+    time.sleep(1.3)
     url = f'https://portaldeservicos.pdpj.jus.br/api/v2/processos/{numero_processo}'
     headers = {'Authorization': bearer_code}
     response = requests.get(url, headers=headers)
@@ -259,7 +262,10 @@ def obter_movimentos(log_callback, bearer_code, numero_processo):
                 ERROS_CAPTURA[400].append(f"[Processo] Processo: {numero_processo} | Erro: Em segredo de justiça")
                 return []
 
-            erro = json.loads(response.text).get('message')
+            try:
+                erro = json.loads(response.text).get('message')
+            except json.JSONDecodeError:
+                erro = response.text or 'Resposta vazia ou inválida'
             log_callback(f"❌ {erro}", tag='erro')
             ERROS_CAPTURA[response.status_code].append(f"[Busca] Filtro: {numero_processo} | Erro: {erro}")
         return []
@@ -291,7 +297,7 @@ class ConsultaJusbrApp:
         self.root.geometry("800x600")
         self.data_inicial = tk.StringVar()
         self.data_final = tk.StringVar()
-        self.bearer_code = ''
+        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTQxMTc0NjMsImlhdCI6MTc1NDA4ODY2NCwiYXV0aF90aW1lIjoxNzU0MDg4NjU3LCJqdGkiOiIzYjVmMjllZC0xYmZmLTQ5NzQtOTU5Ni1lYmFmZmM3MTEwNzIiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6ImQ3MzFhMGRkLTEzYTgtNDBlZC1iOTcxLWZlMjk1OTM5MWIxYSIsInNlc3Npb25fc3RhdGUiOiIyYjRhNzEyMi0xYjc5LTQ0M2MtYjQ2Ni1kNmU5ZmNiMGEzN2EiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiIyYjRhNzEyMi0xYjc5LTQ0M2MtYjQ2Ni1kNmU5ZmNiMGEzN2EiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.PsydplNg8-3BVxGqkYSnNnecNc8Q4rk9a3UYvBWbj9q-V68cmT5k2cK1FGscbZXDmSthWUWnpXdEV-YAHIe1DACKeCHP4KzmPbqOTqhklYlpvUjiqKKDWrJiydW2ymcM5fuxF8Dq0F8Vp3MRRnjU0KMjs6k8Wx1Dq1xaWhEZPZP9OHLZE7QISwPZn3qpw__hw3rHLSaZqoUFbeFsbk1t-vXXIh0kQDSu7MQUoQYEn7t9j-0H4i5rOKgy7SDZOY0iuIsoiLr0fUDnrUTFZhvwVBEe6W-Tczglujl_eWZ0CTeyuWTfUkAhXIbz2_sAnaY4DVIMpeL3BtzHUe6O5rLXxQ'
         self.caminho_excel = None
         self.movimentos_existentes = {}
 
@@ -314,7 +320,7 @@ class ConsultaJusbrApp:
         self.log_text.pack(pady=10)
 
     def abrir_site_jusbr(self):
-        time.sleep(1.5)
+        time.sleep(1)
         self.log("🌐 Iniciando navegador...")
 
         def token_encontrado(token):
@@ -426,6 +432,7 @@ class ConsultaJusbrApp:
                                        "Você precisa selecionar a planilha de CPFs/CNPJs/Processos antes de iniciar.")
                 return
 
+            self.excluir_arquivo_json(f'{NOME_ARQUIVO_PARA_SALVAR}.json')
             total = executar(data_ini, data_fim, self.log, self.bearer_code, self.movimentos_existentes,
                              self.para_capturar)
             self.log(f"✅ Consulta finalizada com {total} resultados.", tag='success', nova_linha=True)
@@ -444,6 +451,13 @@ class ConsultaJusbrApp:
             self.log(f"❌ Erro: {e}", tag='erro')
             messagebox.showerror("Erro", str(e))
 
+    def excluir_arquivo_json(self, arquivo):
+        if os.path.exists(arquivo):
+            try:
+                os.remove(arquivo)
+            except Exception:
+                pass
+
     def salvar_novos_processos(self):
         try:
             data = datetime.now().strftime('%Y-%m-%d %H %M')
@@ -461,7 +475,7 @@ class ConsultaJusbrApp:
             df_novos.to_excel(novo_arquivo, index=False, engine='openpyxl')
             self.log(f"📄 Planilha nova criada: {novo_arquivo}")
 
-            os.remove(json_path)
+            self.excluir_arquivo_json(json_path)
         except Exception as e:
             self.log(f"❌ Erro ao gerar planilha: {e}", tag='erro')
             messagebox.showerror("Erro", f"Erro ao salvar na planilha: {e}")
