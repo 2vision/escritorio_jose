@@ -297,7 +297,7 @@ class ConsultaJusbrApp:
         self.root.geometry("800x600")
         self.data_inicial = tk.StringVar()
         self.data_final = tk.StringVar()
-        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTQxMTc0NjMsImlhdCI6MTc1NDA4ODY2NCwiYXV0aF90aW1lIjoxNzU0MDg4NjU3LCJqdGkiOiIzYjVmMjllZC0xYmZmLTQ5NzQtOTU5Ni1lYmFmZmM3MTEwNzIiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6ImQ3MzFhMGRkLTEzYTgtNDBlZC1iOTcxLWZlMjk1OTM5MWIxYSIsInNlc3Npb25fc3RhdGUiOiIyYjRhNzEyMi0xYjc5LTQ0M2MtYjQ2Ni1kNmU5ZmNiMGEzN2EiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiIyYjRhNzEyMi0xYjc5LTQ0M2MtYjQ2Ni1kNmU5ZmNiMGEzN2EiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.PsydplNg8-3BVxGqkYSnNnecNc8Q4rk9a3UYvBWbj9q-V68cmT5k2cK1FGscbZXDmSthWUWnpXdEV-YAHIe1DACKeCHP4KzmPbqOTqhklYlpvUjiqKKDWrJiydW2ymcM5fuxF8Dq0F8Vp3MRRnjU0KMjs6k8Wx1Dq1xaWhEZPZP9OHLZE7QISwPZn3qpw__hw3rHLSaZqoUFbeFsbk1t-vXXIh0kQDSu7MQUoQYEn7t9j-0H4i5rOKgy7SDZOY0iuIsoiLr0fUDnrUTFZhvwVBEe6W-Tczglujl_eWZ0CTeyuWTfUkAhXIbz2_sAnaY4DVIMpeL3BtzHUe6O5rLXxQ'
+        self.bearer_code = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI1dnJEZ1hCS21FLTdFb3J2a0U1TXU5VmxJZF9JU2dsMnY3QWYyM25EdkRVIn0.eyJleHAiOjE3NTQ5NzgzMDAsImlhdCI6MTc1NDk0OTUwMCwiYXV0aF90aW1lIjoxNzU0OTQ5MjA2LCJqdGkiOiJlOWRiMTExOS0wMDZlLTQzN2ItOTEwNS0yZmUzNzA5YTg4MTQiLCJpc3MiOiJodHRwczovL3Nzby5jbG91ZC5wamUuanVzLmJyL2F1dGgvcmVhbG1zL3BqZSIsImF1ZCI6WyJicm9rZXIiLCJhY2NvdW50Il0sInN1YiI6IjhkMGMzYmNjLTNkOWItNGZlMy04ZThjLWFhN2M0Mzk5NGEwYiIsInR5cCI6IkJlYXJlciIsImF6cCI6InBvcnRhbGV4dGVybm8tZnJvbnRlbmQiLCJub25jZSI6IjZkOWU3ZGVmLTVlNjUtNDAzMi05OGI0LTZiODZkMTRiNjU0YiIsInNlc3Npb25fc3RhdGUiOiI2MGFkZjhiZC0wNDk4LTRjOWUtYmYyZC0wODQ3YTNiODlmYWEiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHBzOi8vcG9ydGFsZGVzZXJ2aWNvcy5wZHBqLmp1cy5iciJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1wamUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYnJva2VyIjp7InJvbGVzIjpbInJlYWQtdG9rZW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiI2MGFkZjhiZC0wNDk4LTRjOWUtYmYyZC0wODQ3YTNiODlmYWEiLCJBY2Vzc2FSZXBvc2l0b3JpbyI6Ik9rIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJFRFVBUkRPIFBFUkVJUkEgR09NRVMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI3Njc4NzA0NDAyMCIsImdpdmVuX25hbWUiOiJFRFVBUkRPIFBFUkVJUkEiLCJmYW1pbHlfbmFtZSI6IkdPTUVTIiwiY29ycG9yYXRpdm8iOlt7InNlcV91c3VhcmlvIjo1MzQ3MjA5LCJub21fdXN1YXJpbyI6IkVEVUFSRE8gUEVSRUlSQSBHT01FUyIsIm51bV9jcGYiOiI3Njc4NzA0NDAyMCIsInNpZ190aXBvX2NhcmdvIjoiQURWIiwiZmxnX2F0aXZvIjoiUyIsInNlcV9zaXN0ZW1hIjowLCJzZXFfcGVyZmlsIjowLCJkc2Nfb3JnYW8iOiJPQUIiLCJzZXFfdHJpYnVuYWxfcGFpIjowLCJkc2NfZW1haWwiOiJzZWNyZXRhcmlhQGVkdWFyZG9nb21lcy5hZHYuYnIiLCJzZXFfb3JnYW9fZXh0ZXJubyI6MCwiZHNjX29yZ2FvX2V4dGVybm8iOiJPQUIiLCJvYWIiOiJSUzkxNjMxIn1dLCJlbWFpbCI6InNlY3JldGFyaWFAZWR1YXJkb2dvbWVzLmFkdi5iciJ9.Kghl3Btmf3LAgTEFtsMia66osVXIkTVH1405QHMKcAqrbkx703EFJkx1wusQjWC_Xd1BbY4fhGUry93Fm_mcrmIkLymQyp7D9dYxRpyBKR1tkFhWe2VE1f9oOtJKS5kJ3zkj4xpc_v2lbYL9YkVTxLsPR1vnwd8Rx5YQl7AX_qbewSgRjFYerB_v2fejSoIeIJf6Cn9PUvvMLbWkcUs0x3FDf0QZ_0yrCGjySBUOXWv9xwTegUclwfszehyCB268kVOuOCL2xtjnBGoOW_loQGSUn-qmuMtk_J5-Xcar3FHNQg4bSH57yHB-UmwB6cGNrqhRswWXTJsNwTz-XqQysg'
         self.caminho_excel = None
         self.movimentos_existentes = {}
 
@@ -471,8 +471,22 @@ class ConsultaJusbrApp:
                 novos_dados = json.load(f)
             df_novos = pd.DataFrame(novos_dados)
 
+            if 'Movimento' in df_novos.columns:
+                df_audiencias = df_novos[df_novos['Movimento'].str.contains('audiência', case=False, na=False)].copy()
+
+                extracoes = df_audiencias['Movimento'].str.extract(r'(\d{2}/\d{2}/\d{4}).*?(\d{2}:\d{2})')
+                extracoes.columns = ['DataExtraida', 'HoraExtraida']
+
+                df_audiencias['DataHora Audiência'] = extracoes['DataExtraida'] + ' ' + extracoes['HoraExtraida']
+                df_audiencias.drop(columns=['DataHora'], inplace=True)
+
+            else:
+                df_audiencias = pd.DataFrame()
+
             novo_arquivo = f'{NOME_ARQUIVO_PARA_SALVAR} - {data}.xlsx'
-            df_novos.to_excel(novo_arquivo, index=False, engine='openpyxl')
+            with pd.ExcelWriter(novo_arquivo, engine='openpyxl') as writer:
+                df_novos.to_excel(writer, index=False, sheet_name='Movimentos')
+                df_audiencias.to_excel(writer, index=False, sheet_name='Audiencias')
             self.log(f"📄 Planilha nova criada: {novo_arquivo}")
 
             self.excluir_arquivo_json(json_path)
