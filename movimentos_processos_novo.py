@@ -19,7 +19,7 @@ ERROS_CAPTURA = defaultdict(list)
 
 
 def api_jusbr(log_callback, bearer_code, filtro, paginacao=None):
-    time.sleep(0.5)
+    time.sleep(1)
     url_base = 'https://portaldeservicos.pdpj.jus.br/api/v2/processos'
     headers = {'Authorization': f'{bearer_code}'}
 
@@ -246,7 +246,7 @@ def iniciar_driver(callback_token_encontrado):
 
 
 def obter_movimentos(log_callback, bearer_code, numero_processo):
-    time.sleep(1.3)
+    time.sleep(1.6)
     url = f'https://portaldeservicos.pdpj.jus.br/api/v2/processos/{numero_processo}'
     headers = {'Authorization': bearer_code}
     response = requests.get(url, headers=headers)

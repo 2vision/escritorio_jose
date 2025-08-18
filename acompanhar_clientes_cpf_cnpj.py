@@ -18,6 +18,7 @@ NOME_ARQUIVO_PARA_SALVAR = 'Consulta JUSBR'
 
 
 def api_jusbr(bearer_code, cnpj, paginacao=None):
+    time.sleep(1.6)
     url_base = 'https://portaldeservicos.pdpj.jus.br/api/v2/processos'
     headers = {'Authorization': f'{bearer_code}'}
     query_params = {'cpfCnpjParte': cnpj}
@@ -179,7 +180,6 @@ def iniciar_driver(callback_token_encontrado):
                     if auth:
                         callback_token_encontrado(auth)
                         return
-            time.sleep(1)
 
     threading.Thread(target=monitorar_logs, daemon=True).start()
     return driver
